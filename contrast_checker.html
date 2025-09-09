@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WCAG 2.0 コントラスト比チェッカー</title>
+<style>
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 600px;
+        margin: 20px auto;
+        padding: 0 15px;
+        background-color: #f8f9fa;
+    }
+    h1 {
+        text-align: center;
+        color: #000;
+    }
+    .controls, .result {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    .color-picker-group {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+    }
+    .color-picker-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    label {
+        margin-bottom: 10px;
+        font-weight: bold;
+    }
+    input[type="color"] {
+        width: 80px;
+        height: 40px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+        padding: 0;
+        background: none;
+    }
+    #preview {
+        margin-top: 20px;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 16px;
+        text-align: center;
+        transition: background-color 0.3s, color 0.3s;
+    }
+    #preview p {
+        font-weight: bold;
+        font-size: 1.2em;
+    }
+    .result h2 {
+        margin-top: 0;
+        text-align: center;
+    }
+    #contrast-ratio {
+        font-size: 2em;
+        font-weight: bold;
+        text-align: center;
+        margin: 0;
+    }
+    #wcag-level {
+        text-align: center;
+        font-size: 1.2em;
+        font-weight: bold;
+        margin-top: 10px;
+    }
+</style>
+</head>
+<body>
+
+    <h1>WCAG 2.0 コントラスト比チェッカー</h1>
+
+
+
+    <!-- 画像アップロード・スポイト・サンプル画像切替機能追加 -->
+    <div class="controls" style="margin-bottom: 20px;">
+        <label for="imageUpload"><b>画像をアップロード:</b></label>
+        <input type="file" id="imageUpload" accept="image/*">
+        <div style="margin:10px 0;">
+            <label><input type="radio" name="pickTarget" value="bg" checked> 背景色に反映</label>
+            <label><input type="radio" name="pickTarget" value="text"> 文字色に反映</label>
+        </div>
+        <div style="margin:10px 0;">
+            <b>サンプル画像:</b>
+            <label><input type="radio" name="sampleImage" value="sample1.png" checked> サンプル1</label>
+            <label><input type="radio" name="sampleImage" value="sample2.png"> サンプル2</label>
+            <label><input type="radio" name="sampleImage" value="sample3.png"> サンプル3</label>
+        </div>
+        <canvas id="imageCanvas" width="400" height="300" style="border:1px solid #ccc; display:none; cursor:crosshair;"></canvas>
+    </div>
+
+    <div class="controls">
+        <div class="color-picker-group">
+            <div class="color-picker-item">
+                <label for="bgColorPicker">背景色</label>
+                <input type="color" id="bgColorPicker" value="#FFFFFF">
+            </div>
+            <div class="color-picker-item">
+                <label for="textColorPicker">文字色</label>
+                <input type="color" id="textColorPicker" value="#000000">
+            </div>
+        </div>
+        <div id="preview">
+            <p>ここにサンプルテキストが表示されます。</p>
+            The quick brown fox jumps over the lazy dog.
+        </div>
+    </div>
+
+    <div class="result">
+        <h2>コントラスト比</h2>
+        <p id="contrast-ratio">21.00</p>
+        <p id="wcag-level"></p>
+    </div>
+
+<script>
+    // DOM要素の取得
+    const bgColorPicker = document.getElementById('bgColorPicker');
+    const textColorPicker = document.getElementById('textColorPicker');
+    const preview = document.getElementById('preview');
+    const contrastRatioEl = document.getElementById('contrast-ratio');
+    const wcagLevelEl = document.getElementById('wcag-level');
+    // 画像アップロード・スポイト・サンプル画像切替用
+    const imageUpload = document.getElementById('imageUpload');
+    const imageCanvas = document.getElementById('imageCanvas');
+    const ctx = imageCanvas.getContext('2d');
+    let img = null;
+    // サンプル画像ファイル名リスト
+    const sampleImages = ["sample1.png", "sample2.png", "sample3.png"];
+    // サンプル画像をcanvasに表示する関数
+    function showSampleImage(filename) {
+        img = new Image();
+        img.onload = function() {
+            let w = img.width, h = img.height;
+            const maxW = 400, maxH = 300;
+            if (w > maxW || h > maxH) {
+                const scale = Math.min(maxW / w, maxH / h);
+                w = Math.round(w * scale);
+                h = Math.round(h * scale);
+            }
+            imageCanvas.width = w;
+            imageCanvas.height = h;
+            imageCanvas.style.display = 'block';
+            ctx.clearRect(0, 0, w, h);
+            ctx.drawImage(img, 0, 0, w, h);
+        };
+        img.src = filename;
+    }
+
+    // サンプル画像ラジオボタン切替イベント
+    document.querySelectorAll('input[name="sampleImage"]').forEach(radio => {
+        radio.addEventListener('change', function(e) {
+            if (e.target.checked) {
+                showSampleImage(e.target.value);
+            }
+        });
+    });
+
+    // 初期表示で1枚目のサンプル画像を表示
+    window.addEventListener('DOMContentLoaded', function() {
+        showSampleImage(sampleImages[0]);
+    });
+    // 画像アップロード時の処理
+    imageUpload.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            img = new Image();
+            img.onload = function() {
+                let w = img.width, h = img.height;
+                const maxW = 400, maxH = 300;
+                if (w > maxW || h > maxH) {
+                    const scale = Math.min(maxW / w, maxH / h);
+                    w = Math.round(w * scale);
+                    h = Math.round(h * scale);
+                }
+                imageCanvas.width = w;
+                imageCanvas.height = h;
+                imageCanvas.style.display = 'block';
+                ctx.clearRect(0, 0, w, h);
+                ctx.drawImage(img, 0, 0, w, h);
+            };
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+        // アップロード時はサンプル画像ラジオボタンのチェックを外す
+        document.querySelectorAll('input[name="sampleImage"]').forEach(radio => radio.checked = false);
+    });
+
+    // スポイトで色取得
+    imageCanvas.addEventListener('click', function(e) {
+        if (!img) return;
+        const rect = imageCanvas.getBoundingClientRect();
+        const x = Math.floor((e.clientX - rect.left) * (imageCanvas.width / rect.width));
+        const y = Math.floor((e.clientY - rect.top) * (imageCanvas.height / rect.height));
+        const pixel = ctx.getImageData(x, y, 1, 1).data;
+        const rgbToHex = (r, g, b) => '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+        const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+        // どちらに反映するか
+        const pickTarget = document.querySelector('input[name="pickTarget"]:checked').value;
+        if (pickTarget === 'bg') {
+            bgColorPicker.value = hex;
+        } else {
+            textColorPicker.value = hex;
+        }
+        updateContrast();
+    });
+
+    // HEXからRGBへ変換する関数
+    function hexToRgb(hex) {
+        const bigint = parseInt(hex.slice(1), 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return [r, g, b];
+    }
+
+    // 相対輝度を計算する関数
+    function getLuminance(rgb) {
+        const [r, g, b] = rgb.map(v => {
+            v /= 255;
+            return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+    
+    // WCAGレベルを判定する関数
+    function getWcagLevel(ratio) {
+        if (ratio >= 7) {
+            return '<span style="color: green;">AAA (適合)</span>';
+        }
+        if (ratio >= 4.5) {
+            return '<span style="color: #6a8f00;">AA (適合)</span>';
+        }
+        if (ratio >= 3) {
+            return '<span style="color: orange;">AA (大きい文字)</span>';
+        }
+        return '<span style="color: red;">不適合</span>';
+    }
+
+
+    // メインの計算と表示更新を行う関数
+    function updateContrast() {
+        // 1. カラーピッカーから色を取得
+        const bgColor = bgColorPicker.value;
+        const textColor = textColorPicker.value;
+
+        // 2. プレビューに色を適用
+        preview.style.backgroundColor = bgColor;
+        preview.style.color = textColor;
+
+        // 3. コントラスト比を計算
+        const bgRgb = hexToRgb(bgColor);
+        const textRgb = hexToRgb(textColor);
+
+        const lum1 = getLuminance(bgRgb);
+        const lum2 = getLuminance(textRgb);
+
+        const lighter = Math.max(lum1, lum2);
+        const darker = Math.min(lum1, lum2);
+        
+        const contrastRatio = (lighter + 0.05) / (darker + 0.05);
+
+        // 4. 結果を表示
+        contrastRatioEl.textContent = contrastRatio.toFixed(2);
+        wcagLevelEl.innerHTML = `判定: ${getWcagLevel(contrastRatio)}`;
+    }
+
+    // イベントリスナーを設定
+    bgColorPicker.addEventListener('input', updateContrast);
+    textColorPicker.addEventListener('input', updateContrast);
+
+    // 初期読み込み時に一度実行
+    window.addEventListener('load', updateContrast);
+
+</script>
+
+</body>
+</html>
