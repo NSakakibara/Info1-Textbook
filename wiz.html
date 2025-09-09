@@ -13,10 +13,18 @@
         }
         .bg-magic {
             background-color: #1a202c;
-            background-image:
-                radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.05), transparent 60%),
-                radial-gradient(circle at 10% 20%, rgba(128, 0, 128, 0.2), transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(0, 128, 128, 0.2), transparent 40%);
+            background-image: radial-gradient(circle, #3a3a5a 1px, transparent 1px);
+            background-size: 1.5rem 1.5rem;
+        }
+        .ingredient {
+            cursor: grab;
+            transition: transform 0.2s ease-in-out;
+            touch-action: auto; /* 材料の上ではタッチ操作をブラウザ標準に戻す */
+        }
+        .ingredient:active {
+            cursor: grabbing;
+            transform: scale(1.1);
+            z-index: 10;
         }
         .recipe-scroll {
             background-color: #f5e8c7;
@@ -355,6 +363,7 @@
     </script>
 </body>
 </html>
+
 
 
 
