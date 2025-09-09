@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ウェブ探検家と情報の羅針盤</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            touch-action: none;
+        }
+        .tag {
+            cursor: grab;
+            user-select: none;
+        }
+        .tag:active {
+            cursor: grabbing;
+        }
+        .drop-target {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.2s ease-in-out;
+            min-height: 50px;
+        }
+        .drop-target.drag-over {
+            background-color: #e0f2fe;
+            border-color: #38bdf8;
+        }
+        .drop-target.tagged {
+            border-style: solid;
+            border-color: #94a3b8;
+        }
+        .drop-target.tagged::before {
+            content: attr(data-tag-display);
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 4px;
+            padding: 2px 6px;
+            background-color: #e2e8f0;
+            border-radius: 4px;
+            width: fit-content;
+        }
+        .h1-style { font-size: 2.25rem; font-weight: 800; }
+        .h2-style { font-size: 1.875rem; font-weight: 700; }
+        .h3-style { font-size: 1.5rem; font-weight: 700; }
+        .p-style { font-size: 1rem; font-weight: 400; }
+
+        .feedback-modal {
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-7xl mx-auto bg-white rounded-2xl shadow-2xl p-4 sm:p-8 overflow-hidden">
+        <header class="text-center mb-6">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-700">ウェブ探検家と情報の羅針盤</h1>
+            <p class="text-slate-500 mt-2">見出しタグを正しく配置して、情報の探検家をゴールに導こう！</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <!-- Left Panel: Character & Tags -->
+            <aside class="lg:col-span-1 bg-slate-50 p-6 rounded-xl border border-slate-200">
+                <div id="character-area" class="text-center">
+                    <!-- Character Image -->
+                    <div class="w-32 h-32 mx-auto bg-sky-200 rounded-full flex items-center justify-center border-4 border-white shadow-lg mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 text-sky-600" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10s10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88a9.947 9.947 0 0 1 12.28 0C16.43 19.18 14.03 20 12 20z"/></svg>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-700">ベテラン学者</h2>
+                    <div id="dialogue-box" class="mt-2 bg-white p-4 rounded-lg shadow-inner text-sm text-slate-600 h-32 overflow-y-auto">
+                        やあ、探検家くん。この膨大な報告書の中から<strong class="text-sky-600">「古代遺跡の発見」</strong>に関する部分だけをすぐに見つけたいんだ。見出しを付けて整理してくれないか？
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <h3 class="font-bold text-center text-slate-600 mb-4">タグの道具箱</h3>
+                    <div id="tag-toolbox" class="grid grid-cols-2 gap-4">
+                        <div class="tag bg-white p-4 rounded-lg shadow-md text-center" draggable="true" data-tag="h1">
+                            <span class="font-bold text-2xl text-violet-600">見出し1</span>
+                            <code class="block text-sm text-slate-500">&lt;h1&gt;</code>
+                        </div>
+                        <div class="tag bg-white p-4 rounded-lg shadow-md text-center" draggable="true" data-tag="h2">
+                            <span class="font-bold text-xl text-blue-600">見出し2</span>
+                            <code class="block text-sm text-slate-500">&lt;h2&gt;</code>
+                        </div>
+                        <div class="tag bg-white p-4 rounded-lg shadow-md text-center" draggable="true" data-tag="h3">
+                            <span class="font-bold text-lg text-teal-600">見出し3</span>
+                            <code class="block text-sm text-slate-500">&lt;h3&gt;</code>
+                        </div>
+                        <div class="tag bg-white p-4 rounded-lg shadow-md text-center" draggable="true" data-tag="p">
+                            <span class="font-bold text-base text-slate-600">段落</span>
+                            <code class="block text-sm text-slate-500">&lt;p&gt;</code>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Right Panel: Content & Controls -->
+            <div class="lg:col-span-2">
+                <div id="content-area" class="bg-slate-50 p-6 sm:p-8 rounded-xl border border-slate-200 space-y-4">
+                    <!-- Drop targets will be dynamically generated here -->
+                </div>
+                <div class="mt-6 flex justify-center items-center gap-4">
+                    <button id="check-button" class="bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transition-transform transform hover:scale-105">
+                        ナビゲート開始！
+                    </button>
+                    <button id="reset-button" class="bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded-full transition-transform transform hover:scale-105">
+                        リセット
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div id="feedback-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+        <div class="feedback-modal bg-white rounded-2xl shadow-xl w-full max-w-2xl p-8 text-center relative">
+            <h2 id="modal-title" class="text-3xl font-extrabold mb-4"></h2>
+            <div id="modal-content" class="text-slate-600 mb-6"></div>
+             <!-- Outline will be generated here -->
+            <div id="modal-outline" class="mb-6 text-left p-4 bg-slate-100 rounded-lg max-h-60 overflow-y-auto"></div>
+            <p id="modal-explanation" class="text-sm bg-amber-100 text-amber-800 p-4 rounded-lg"></p>
+            <button id="modal-close-button" class="mt-8 bg-sky-500 hover:bg-sky-600 text-white font-bold py-2 px-8 rounded-full text-lg shadow-lg transition-transform transform hover:scale-105">
+                OK
+            </button>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    // --- DOM Elements ---
+    const tagToolbox = document.getElementById('tag-toolbox');
+    const contentArea = document.getElementById('content-area');
+    const checkButton = document.getElementById('check-button');
+    const resetButton = document.getElementById('reset-button');
+    const dialogueBox = document.getElementById('dialogue-box');
+
+    const modal = document.getElementById('feedback-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalContent = document.getElementById('modal-content');
+    const modalOutline = document.getElementById('modal-outline');
+    const modalExplanation = document.getElementById('modal-explanation');
+    const modalCloseButton = document.getElementById('modal-close-button');
+
+    // --- Game Data ---
+    const level1 = {
+        targetText: "古代遺跡の発見",
+        dialogue: {
+            start: `やあ、探検家くん。この膨大な報告書の中から<strong class="text-sky-600">「古代遺跡の発見」</strong>に関する部分だけをすぐに見つけたいんだ。見出しを付けて整理してくれないか？`,
+            allParagraphs: `うーん、これだと全部が同じ扱いで、どこに何が書いてあるか一目でわからないな...。これでは最初から全部読まないと目的の場所が見つからないよ。`,
+            levelSkip: `おっと、見出しのレベルを飛ばしてしまったようだね。<strong class="text-sky-600">h1の次にはh2</strong>が来るのが自然な流れだよ。`,
+            noH1: `報告書全体のタイトルがないと、何についての文章か分からないな。<strong class="text-sky-600">一番大きな見出し(h1)</strong>が一つ必要だ。`,
+            multipleH1: `<strong class="text-sky-600">一番大きな見出し(h1)</strong>は、普通1ページに一つだけなんだ。どれが本当のタイトルか分からなくなってしまうよ。`,
+            success: `素晴らしい！この目次のおかげで<strong class="text-sky-600">「古代遺跡の発見」</strong>にすぐジャンプできる！ありがとう！`
+        },
+        content: [
+            { id: 0, text: "巨大遺跡群に関する総合報告書", correctTag: 'h1' },
+            { id: 1, text: "調査の背景", correctTag: 'h2' },
+            { id: 2, text: "長年にわたり、この地域の歴史は謎に包まれていました。我々は最新技術を駆使し、包括的な地理調査を開始しました。", correctTag: 'p' },
+            { id: 3, text: "調査結果", correctTag: 'h2' },
+            { id: 4, text: "古代遺跡の発見", correctTag: 'h3' },
+            { id: 5, text: "チームは、山岳地帯でこれまで知られていなかった巨大な石造りの遺跡を発見しました。これは歴史を塗り替える大発見です。", correctTag: 'p' },
+            { id: 6, text: "出土品について", correctTag: 'h3' },
+            { id: 7, text: "遺跡からは、生活様式を示す多数の土器片や、宗教儀式に使われたと思われる精巧な装飾品が出土しています。", correctTag: 'p' },
+        ]
+    };
+
+    let draggedTag = null;
+
+    // --- Functions ---
+    
+    /**
+     * Loads the level content into the content area.
+     */
+    function loadLevel(level) {
+        contentArea.innerHTML = '';
+        dialogueBox.innerHTML = level.dialogue.start;
+        level.content.forEach(item => {
+            const div = document.createElement('div');
+            div.id = `content-${item.id}`;
+            div.className = 'drop-target p-4 rounded-lg bg-white shadow';
+            div.textContent = item.text;
+            div.dataset.correctTag = item.correctTag;
+            contentArea.appendChild(div);
+        });
+        addDropListeners();
+    }
+
+    /**
+     * Resets all tags from the content area.
+     */
+    function resetLevel() {
+        const targets = contentArea.querySelectorAll('.drop-target');
+        targets.forEach(target => {
+            target.className = 'drop-target p-4 rounded-lg bg-white shadow';
+            target.removeAttribute('data-tag');
+            target.removeAttribute('data-tag-display');
+        });
+        dialogueBox.innerHTML = level1.dialogue.start;
+    }
+
+    // --- Drag and Drop Logic ---
+
+    tagToolbox.addEventListener('dragstart', (e) => {
+        if (e.target.classList.contains('tag')) {
+            draggedTag = e.target.dataset.tag;
+            e.dataTransfer.setData('text/plain', draggedTag);
+            e.target.style.opacity = '0.5';
+        }
+    });
+
+    tagToolbox.addEventListener('dragend', (e) => {
+        if (e.target.classList.contains('tag')) {
+            e.target.style.opacity = '1';
+        }
+    });
+
+    function addDropListeners() {
+        const targets = contentArea.querySelectorAll('.drop-target');
+        targets.forEach(target => {
+            target.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                target.classList.add('drag-over');
+            });
+            target.addEventListener('dragleave', () => {
+                target.classList.remove('drag-over');
+            });
+            target.addEventListener('drop', (e) => {
+                e.preventDefault();
+                target.classList.remove('drag-over');
+                const tag = e.dataTransfer.getData('text/plain');
+                if (tag) {
+                    applyTag(target, tag);
+                }
+            });
+        });
+    }
+    
+    function applyTag(target, tag) {
+        target.className = 'drop-target p-4 rounded-lg bg-white shadow tagged';
+        target.classList.add(`${tag}-style`);
+        target.dataset.tag = tag;
+        target.dataset.tagDisplay = `<${tag}>`;
+    }
+
+
+    // --- Validation and Feedback Logic ---
+    checkButton.addEventListener('click', () => {
+        const structure = Array.from(contentArea.querySelectorAll('.drop-target')).map(el => {
+            return {
+                tag: el.dataset.tag || 'p', // Default to 'p' if untagged
+                text: el.textContent,
+                level: el.dataset.tag ? parseInt(el.dataset.tag.replace('h', '')) : 0,
+            };
+        });
+
+        // --- Validation Rules ---
+        const h1Count = structure.filter(item => item.tag === 'h1').length;
+        if (h1Count === 0) {
+            showFeedback(false, level1.dialogue.noH1);
+            return;
+        }
+        if (h1Count > 1) {
+            showFeedback(false, level1.dialogue.multipleH1);
+            return;
+        }
+
+        if (structure.every(item => item.tag === 'p')) {
+             showFeedback(false, level1.dialogue.allParagraphs);
+            return;
+        }
+
+        let lastLevel = 0;
+        for (const item of structure) {
+            if (item.tag.startsWith('h')) {
+                if (item.level > lastLevel + 1) {
+                    showFeedback(false, level1.dialogue.levelSkip);
+                    return;
+                }
+                lastLevel = item.level;
+            }
+        }
+        
+        // If all checks pass, it's a success
+        dialogueBox.innerHTML = level1.dialogue.success;
+        showFeedback(true, "ナビゲーション成功！", structure);
+    });
+
+    function showFeedback(isSuccess, message, structure = null) {
+        modal.classList.remove('hidden');
+        if (isSuccess) {
+            modalTitle.textContent = 'クリア！';
+            modalTitle.className = 'text-3xl font-extrabold mb-4 text-green-500';
+            modalContent.textContent = '正しく構造化されたため、探検家は目的の情報をすぐに見つけられました！';
+            modalExplanation.innerHTML = `<strong>ポイント：</strong>スクリーンリーダー（音声読み上げソフト）は、見出しを頼りにページの内容を把握します。正しい見出し構造は、情報への近道を作る「親切な道しるべ」になるのです。`;
+            generateOutline(structure);
+        } else {
+            modalTitle.textContent = 'おしい！';
+            modalTitle.className = 'text-3xl font-extrabold mb-4 text-red-500';
+            modalContent.innerHTML = message;
+            modalOutline.innerHTML = '<p class="text-slate-500 italic">構造が不適切なため、目次を生成できませんでした。</p>';
+            modalExplanation.innerHTML = `<strong>ヒント：</strong>見出しは文書の骨格です。<code>&lt;h1&gt;</code>を頂点に、<code>&lt;h2&gt;</code>、<code>&lt;h3&gt;</code>と順番に使いましょう。`;
+            dialogueBox.innerHTML = message;
+        }
+    }
+
+    function generateOutline(structure) {
+        modalOutline.innerHTML = '';
+        const outlineList = document.createElement('ul');
+        outlineList.className = 'space-y-2';
+        structure.forEach(item => {
+            if(item.tag.startsWith('h')) {
+                const li = document.createElement('li');
+                li.textContent = item.text;
+                li.className = 'font-semibold text-slate-700 p-2 rounded-md';
+                if (item.tag === 'h2') li.style.marginLeft = '20px';
+                if (item.tag === 'h3') li.style.marginLeft = '40px';
+                
+                if (item.text === level1.targetText) {
+                    li.classList.add('bg-sky-200', 'ring-2', 'ring-sky-500');
+                    const span = document.createElement('span');
+                    span.className = 'ml-2 text-xs font-bold text-sky-700 align-middle';
+                    span.textContent = '←目的地！';
+                    li.appendChild(span);
+                }
+                outlineList.appendChild(li);
+            }
+        });
+        modalOutline.appendChild(outlineList);
+    }
+    
+    // --- Event Listeners ---
+    resetButton.addEventListener('click', resetLevel);
+    modalCloseButton.addEventListener('click', () => modal.classList.add('hidden'));
+
+    // --- Initial Load ---
+    loadLevel(level1);
+});
+</script>
+
+</body>
+</html>

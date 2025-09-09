@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ウェブアクセシビリティ 音声読み上げデモ</title>
+    <style>
+        /* === 全体のスタイル === */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 0 15px;
+        }
+
+        h1, h2, h3 {
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+        }
+        
+        h1 { font-size: 2em; }
+        h2 { font-size: 1.75em; margin-top: 2em; }
+        h3 { font-size: 1.25em; border-bottom-style: dotted; }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap; /* 画面が狭いときに折り返す */
+            gap: 2em;
+        }
+
+        .demo-section {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 1em;
+            flex: 1; /* フレックスアイテムとして均等に広がる */
+            min-width: 300px; /* 最小幅を指定 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-top: 10px;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        hr {
+            margin: 2em 0;
+            border: none;
+            border-top: 1px solid #eee;
+        }
+        
+        /* === デモ固有のスタイル === */
+        .bad-h1 { font-size: 2em; font-weight: bold; margin: 0.67em 0; }
+        .bad-h2 { font-size: 1.5em; font-weight: bold; margin: 0.83em 0; }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 1em;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        thead {
+            background-color: #f2f2f2;
+        }
+
+        /* 読み上げ中の要素をハイライトするスタイル */
+        .highlight-reading {
+            background-color: #ffc107; /* 黄色 */
+            color: black;
+            border-radius: 3px;
+            transition: background-color 0.1s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>ウェブアクセシビリティ：音声読み上げデモ</h1>
+    <p>スクリーンリーダーがどのようにページを読み上げるのか体験してみましょう。各セクションのボタンを押して、元の文章が直接ハイライトされる様子を確認してください。</p>
+
+    <hr>
+
+    <h2>デモ1：見出しの拾い読み</h2>
+    <div class="container">
+        <!-- 悪い例 -->
+        <div class="demo-section">
+            <h3>悪い例：見た目だけの見出し</h3>
+            <div id="bad-headings-content">
+                <div class="bad-h1">自己紹介</div>
+                <p>私の名前は山田です。趣味は読書です。週末はよく図書館に行きます。</p>
+                <div class="bad-h2">好きな本</div>
+                <p>特にミステリー小説が好きで、国内外の様々な作品を読んでいます。</p>
+            </div>
+            <button onclick="readBadHeadings()">この内容を読み上げる</button>
+            <button onclick="jumpBadHeadings()">見出しだけ拾い読み（失敗例）</button>
+        </div>
+
+        <!-- 良い例 -->
+        <div class="demo-section">
+            <h3>良い例：hタグを使った見出し</h3>
+            <div id="good-headings-content">
+                <h1>自己紹介</h1>
+                <p>私の名前は佐藤です。趣味はスポーツです。週末はよくジムに行きます。</p>
+                <h2>好きなスポーツ</h2>
+                <p>特にサッカーが好きで、地元のチームを応援しています。</p>
+            </div>
+            <button onclick="readGoodHeadings()">この内容を読み上げる</button>
+            <button onclick="jumpGoodHeadings()">見出しだけ拾い読み（成功例）</button>
+        </div>
+    </div>
+
+    <hr>
+
+    <h2>デモ2：テーブルの読み上げ</h2>
+    <div class="container">
+        <!-- 悪い例 -->
+        <div class="demo-section">
+            <h3>悪い例：構造化されていないテーブル</h3>
+            <div id="bad-table-content">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td>氏名</td>
+                            <td>教科</td>
+                            <td>点数</td>
+                        </tr>
+                        <tr>
+                            <td>鈴木</td>
+                            <td>国語</td>
+                            <td>85</td>
+                        </tr>
+                        <tr>
+                            <td>田中</td>
+                            <td>数学</td>
+                            <td>92</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <button onclick="readBadTable()">このテーブルを読み上げる</button>
+        </div>
+
+        <!-- 良い例 -->
+        <div class="demo-section">
+            <h3>良い例：構造化されたテーブル</h3>
+            <div id="good-table-content">
+                <table id="good-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">氏名</th>
+                            <th scope="col">教科</th>
+                            <th scope="col">点数</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th scope="row">高橋</th>
+                            <td>国語</td>
+                            <td>78</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">伊藤</th>
+                            <td>数学</td>
+                            <td>95</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <button onclick="readGoodTable()">このテーブルを読み上げる</button>
+        </div>
+    </div>
+
+
+    <script>
+        // --- 読み上げとハイライトのコアロジック ---
+
+        let speechQueue = []; // 読み上げる要素のキュー
+        let currentHighlightElement = null; // 現在ハイライト中の要素
+
+        /**
+         * 複数のHTML要素を順番に読み上げ、ハイライトする
+         * @param {NodeListOf<Element> | Element[]} elements - 読み上げる要素のリスト
+         */
+        function speakElements(elements) {
+            // 既存の読み上げをキャンセルし、キューをリセット
+            window.speechSynthesis.cancel();
+            if (currentHighlightElement) {
+                currentHighlightElement.classList.remove('highlight-reading');
+                currentHighlightElement = null;
+            }
+            speechQueue = Array.from(elements);
+            processSpeechQueue();
+        }
+
+        /**
+         * キューから要素を一つ取り出し、読み上げ処理を開始する
+         */
+        function processSpeechQueue() {
+            if (speechQueue.length === 0) {
+                if (currentHighlightElement) {
+                     currentHighlightElement.classList.remove('highlight-reading');
+                     currentHighlightElement = null;
+                }
+                return;
+            }
+
+            const element = speechQueue.shift();
+            const textToSpeak = element.innerText;
+            
+            // 空の要素はスキップ
+            if (!textToSpeak.trim()) {
+                processSpeechQueue();
+                return;
+            }
+            
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            utterance.lang = 'ja-JP';
+            utterance.rate = 1.2;
+
+            utterance.onstart = () => {
+                // 前のハイライトを消し、新しい要素をハイライト
+                if (currentHighlightElement) {
+                    currentHighlightElement.classList.remove('highlight-reading');
+                }
+                element.classList.add('highlight-reading');
+                currentHighlightElement = element;
+            };
+
+            utterance.onend = () => {
+                // キューの次の要素へ
+                processSpeechQueue();
+            };
+            
+            window.speechSynthesis.speak(utterance);
+        }
+        
+        /**
+         * 単一のテキストを読み上げる（特定の要素に紐付かない場合に使用）
+         */
+        function speakMessage(text) {
+             window.speechSynthesis.cancel();
+             if (currentHighlightElement) {
+                currentHighlightElement.classList.remove('highlight-reading');
+                currentHighlightElement = null;
+            }
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ja-JP';
+            utterance.rate = 1.2;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // --- 各デモのボタンに対応する関数 ---
+
+        // === 見出しデモ ===
+
+        function readBadHeadings() {
+            const elements = document.querySelectorAll('#bad-headings-content > *');
+            speakElements(elements);
+        }
+
+        function jumpBadHeadings() {
+            speakMessage("divタグではどれが見出しか判別できないため、拾い読みができません。");
+        }
+
+        function readGoodHeadings() {
+            const elements = document.querySelectorAll('#good-headings-content > *');
+            speakElements(elements);
+        }
+
+        function jumpGoodHeadings() {
+            const elements = document.querySelectorAll('#good-headings-content h1, #good-headings-content h2');
+            speakElements(elements);
+        }
+
+        // === テーブルデモ ===
+
+        function readBadTable() {
+            // 行ごとに読み上げる
+            const rows = document.querySelectorAll('#bad-table-content tr');
+            speakElements(rows);
+        }
+
+        // 良いテーブルは意味のある単位で読み上げるため、特別な処理
+        async function readGoodTable() {
+            window.speechSynthesis.cancel(); // 進行中の読み上げを停止
+            
+            const table = document.getElementById('good-table');
+            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent);
+            const rows = table.querySelectorAll('tbody tr');
+            
+            // 読み上げとハイライトを非同期で実行するヘルパー関数
+            const speakAndHighlight = (text, element) => {
+                return new Promise(resolve => {
+                    if (currentHighlightElement) {
+                        currentHighlightElement.classList.remove('highlight-reading');
+                    }
+                    element.classList.add('highlight-reading');
+                    currentHighlightElement = element;
+
+                    const utterance = new SpeechSynthesisUtterance(text); // <- Fixed typo here
+                    utterance.lang = 'ja-JP';
+                    utterance.rate = 1.2;
+                    utterance.onend = resolve; // 読み上げ完了でPromiseを解決
+                    window.speechSynthesis.speak(utterance);
+                });
+            };
+            
+            await speakAndHighlight("テーブルを読み上げます。", table);
+
+            for (const row of rows) {
+                const rowHeader = row.querySelector('th').textContent;
+                const cells = row.querySelectorAll('td');
+                // 1行分の読み上げテキストを生成します
+                let textToSpeak = `${rowHeader}の`;
+                
+                cells.forEach((cell, index) => {
+                    const headerText = headers[index + 1]; // "教科" または "点数"
+                    const cellText = cell.textContent;
+
+                    textToSpeak += `、${headerText}は${cellText}`;
+
+                    // 条件分岐：列の見出しが「点数」の場合のみ「点」を付ける
+                    if (headerText === '点数') {
+                        textToSpeak += '点';
+                    }
+                });
+                textToSpeak += '。'; // 最後に句点を追加
+                
+                // 生成したテキストで読み上げとハイライトを実行
+                await speakAndHighlight(textToSpeak, row);
+            }
+            
+            // 最後にハイライトを消す
+            if (currentHighlightElement) {
+                currentHighlightElement.classList.remove('highlight-reading');
+                currentHighlightElement = null;
+            }
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,320 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alt属性クイズ - Webアクセシビリティを学ぼう</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+        }
+        .option-button {
+            transition: all 0.2s ease-in-out;
+        }
+        .option-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .correct {
+            background-color: #dcfce7 !important; /* green-100 */
+            border-color: #22c55e !important; /* green-500 */
+        }
+        .incorrect {
+            background-color: #fee2e2 !important; /* red-100 */
+            border-color: #ef4444 !important; /* red-500 */
+        }
+        .explanation-icon {
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 flex items-center justify-center min-h-screen p-4">
+
+    <div id="quiz-container" class="w-full max-w-3xl bg-white rounded-2xl shadow-lg p-6 md:p-8">
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Alt属性クイズ ✍️</h1>
+            <p class="text-gray-600 mt-2">画像の状況に最適な代替テキストを選んで、Webアクセシビリティを学びましょう。</p>
+        </div>
+        
+        <!-- Progress Bar and Score -->
+        <div class="flex justify-between items-center mb-4">
+            <div class="w-full bg-gray-200 rounded-full h-2.5 mr-4">
+                <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%;"></div>
+            </div>
+            <div class="text-right">
+                <span class="text-sm font-semibold text-gray-700">スコア: <span id="score">0</span></span>
+            </div>
+        </div>
+
+        <!-- Quiz Content -->
+        <div id="quiz-content">
+            <!-- Question Context -->
+            <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-800 p-4 rounded-r-lg mb-6">
+                <h3 class="font-bold text-lg mb-1">状況</h3>
+                <p id="context" class="text-sm md:text-base"></p>
+            </div>
+
+            <!-- Image -->
+            <div class="mb-6 flex justify-center">
+                <img id="quiz-image" src="" alt="クイズ用の画像" class="max-w-full h-auto max-h-64 rounded-lg shadow-md object-contain">
+            </div>
+            
+            <!-- Options -->
+            <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Options will be dynamically inserted here -->
+            </div>
+
+            <!-- Feedback -->
+            <div id="feedback-container" class="mt-6 hidden">
+                <h3 id="feedback-title" class="text-xl font-bold mb-2"></h3>
+                <div id="explanation" class="bg-gray-100 p-4 rounded-lg flex items-start space-x-3">
+                    <span id="explanation-icon" class="text-2xl explanation-icon"></span>
+                    <p class="text-gray-700"></p>
+                </div>
+            </div>
+
+            <!-- Control Buttons -->
+            <div class="mt-8 text-center">
+                <button id="next-button" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition-colors duration-300 w-full md:w-auto hidden">次の問題へ</button>
+            </div>
+        </div>
+
+        <!-- Quiz Result -->
+        <div id="result-container" class="text-center hidden">
+            <h2 class="text-3xl font-bold text-gray-900 mb-2">クイズ終了！</h2>
+            <p class="text-lg text-gray-600 mb-4">あなたの最終スコアは...</p>
+            <p class="text-5xl font-extrabold text-blue-600 mb-6"><span id="final-score">0</span> / <span id="total-questions">0</span></p>
+            <p class="mb-8">素晴らしいです！代替テキストの基本をマスターしましたね。</p>
+            <button id="restart-button" class="bg-gray-800 text-white font-bold py-3 px-8 rounded-lg hover:bg-gray-900 transition-colors duration-300 w-full md:w-auto">もう一度挑戦する</button>
+        </div>
+    </div>
+
+    <!-- JavaScriptファイルをモジュールとして読み込む -->
+    <script>
+        // クイズデータをHTMLファイル内に直接定義
+        const quizData = [
+            {
+                image: "https://placehold.co/600x300/e2e8f0/334155?text=Decorative+Wave",
+                context: "この画像は、セクションの区切りとして使われている単なる装飾です。情報としての意味はありません。",
+                options: [
+                    { text: 'alt="青い波の画像"', correct: false, explanation: "装飾的な画像に説明的なaltテキストを入れると、スクリーンリーダーが不要な情報を読み上げてしまい、ユーザー体験を損ないます。" },
+                    { text: 'alt=""', correct: true, explanation: "正解です。装飾的な画像で情報を持たない場合は、alt属性を空に設定します。これにより、スクリーンリーダーは画像を無視し、ユーザーに不要な情報を伝えません。" },
+                    { text: 'alt="区切り"', correct: false, explanation: "「区切り」というテキストも不要な情報です。視覚的なデザイン要素は、スクリーンリーダーの利用者には意味をなさないことが多いです。" },
+                    { text: '(alt属性なし)', correct: false, explanation: "alt属性を省略してはいけません。省略すると、一部のスクリーンリーダーが画像のファイル名を読み上げてしまう可能性があり、かえって混乱を招きます。" }
+                ]
+            },
+            {
+                image: "https://placehold.co/400x100/4285F4/ffffff?text=MyBrand+Logo",
+                context: "ヘッダーにある企業ロゴです。このロゴをクリックすると、サイトのトップページに戻ります。",
+                options: [
+                    { text: 'alt="ロゴ"', correct: false, explanation: "「ロゴ」だけでは不十分です。この画像がリンクであり、どこに遷移するのかがスクリーンリーダーの利用者には分かりません。" },
+                    { text: 'alt="MyBrandのカラフルなロゴ"', correct: false, explanation: "画像がリンクである場合、その見た目の説明よりもリンクの遷移先や機能が重要です。" },
+                    { text: 'alt="MyBrand トップページへ"', correct: true, explanation: "正解です。画像がリンクの場合、altテキストはそのリンクの遷移先や目的を説明する必要があります。「トップページへ」と記述することで、ユーザーは何が起こるかを正確に理解できます。" },
+                    { text: 'alt=""', correct: false, explanation: "このロゴはサイトのナビゲーションにおいて重要な機能を持つため、alt属性を空にしてはいけません。スクリーンリーダーの利用者がトップページに戻れなくなってしまいます。" }
+                ]
+            },
+            {
+                image: "https://placehold.co/500x350/ffffff/333333?text=Bar+Chart%0A%0AJan:+150%0AFeb:+250%0AMar:+200",
+                context: "月間の製品売上を示す棒グラフです。この記事の主要なコンテンツです。",
+                options: [
+                    { text: 'alt="売上を示す棒グラフ"', correct: false, explanation: "これではグラフが伝えている具体的な情報が全く分かりません。視覚的なユーザーが得る情報と等価ではありません。" },
+                    { text: 'alt="1月から3月までの製品売上。1月は150個、2月は250個、3月は200個の売上。"', correct: true, explanation: "正解です。グラフや図表などの情報を含む画像では、その画像が伝えている情報をすべてテキストで記述する必要があります。これにより、視覚的な情報と等価な情報をスクリーンリーダーの利用者も得ることができます。" },
+                    { text: 'alt="右肩上がりのグラフ"', correct: false, explanation: "グラフの傾向を伝えるだけでは不十分です。具体的なデータが重要です。" },
+                    { text: 'alt=""', correct: false, explanation: "グラフは重要な情報を含んでいるため、alt属性を空にすると、その情報が完全に失われてしまいます。" }
+                ]
+            },
+            {
+                image: "https://placehold.co/400x500/cccccc/333333?text=Dr.+Hayashi",
+                context: "科学雑誌の記事で、宇宙飛行士の林博士を紹介している写真です。",
+                options: [
+                    { text: 'alt="宇宙服を着た人物"', correct: false, explanation: "誰なのかが分からないため、不十分です。記事の文脈上、この人物が誰であるかは重要な情報です。" },
+                    { text: 'alt="宇宙飛行士の林博士"', correct: true, explanation: "正解です。写真の人物が誰であるかが文脈上重要な場合、その人物の名前を明記するのが適切です。「写真」という言葉は不要です。" },
+                    { text: 'alt=""', correct: false, explanation: "この写真は記事の主要な情報（林博士の紹介）を伝えているため、alt属性を空にしてはいけません。" },
+                    { text: 'alt="林博士の写真"', correct: false, explanation: "スクリーンリーダーは画像であることを伝えるため、「写真」という言葉は冗長になります。内容を簡潔に伝えましょう。" }
+                ]
+            },
+            {
+                image: "https://placehold.co/600x300/f87171/ffffff?text=SUMMER+SALE%0A50%25+OFF",
+                context: "ECサイトに掲載されている、サマーセールの告知バナーです。",
+                options: [
+                    { text: 'alt="サマーセール 50% OFF"', correct: true, explanation: "正解です。画像内にテキストが含まれている場合、そのテキスト情報をalt属性に記述するのが基本です。これにより、画像が見えないユーザーにも同じ情報が伝わります。" },
+                    { text: 'alt="赤い背景のバナー"', correct: false, explanation: "画像の色やデザインよりも、画像に含まれるテキスト情報の方がはるかに重要です。" },
+                    { text: 'alt="セールのお知らせ"', correct: false, explanation: "「50% OFF」という重要な情報が欠けています。画像内のテキストは正確に記述しましょう。" },
+                    { text: 'alt="クリックして詳細を見る"', correct: false, explanation: "このテキストは、もし画像がリンクである場合のaltテキストとして適切ですが、今回は単なる告知バナーなので、画像の内容を説明するのが適切です。" }
+                ]
+            },
+            {
+                image: "https://placehold.co/100x100/f0f9ff/0284c7?text=↓",
+                context: "レポートの横にあるダウンロードアイコンです。クリックするとPDFファイルをダウンロードします。",
+                options: [
+                    { text: 'alt="ダウンロードアイコン"', correct: false, explanation: "アイコンの見た目を説明しても、それが何をするためのものかが伝わりません。" },
+                    { text: 'alt="レポートをダウンロード (PDF)"', correct: true, explanation: "正解です。アイコンがリンクやボタンとして機能する場合、altテキストはその機能や目的（何が起こるか）を説明するべきです。ファイル形式を伝えるのも親切です。" },
+                    { text: 'alt="下向きの矢印"', correct: false, explanation: "アイコンの見た目の説明は、その機能が分からないユーザーにとっては意味がありません。" },
+                    { text: 'alt=""', correct: false, explanation: "これは重要な機能を持つ要素なので、alt属性を空にすると、スクリーンリーダーの利用者はダウンロード機能に気づけなくなってしまいます。" }
+                ]
+            },
+            {
+                image: "https://placehold.co/400x400/34d399/ffffff?text=✔",
+                context: "入力フォームの送信が成功したことを示すアイコンです。アイコンの隣には「メッセージを送信しました」というテキストが表示されています。",
+                options: [
+                    { text: 'alt="成功"', correct: false, explanation: "隣に「メッセージを送信しました」というテキストがあるため、altテキストで「成功」と伝えると「成功、メッセージを送信しました」と重複した情報を読み上げてしまいます。" },
+                    { text: 'alt="緑のチェックマーク"', correct: false, explanation: "アイコンの見た目の説明は不要です。また、隣のテキストと情報が重複してしまいます。" },
+                    { text: 'alt=""', correct: true, explanation: "正解です。画像の隣に同等の情報（この場合は「メッセージを送信しました」）を伝えるテキストがある場合、画像は装飾的な役割と見なせます。alt属性を空にすることで、スクリーンリーダーが同じ情報を二度読み上げるのを防ぎます。" },
+                    { text: 'alt="送信成功アイコン"', correct: false, explanation: "これも隣のテキストと情報が重複してしまいます。「アイコン」という言葉はaltテキストに含める必要はありません。" }
+                ]
+            },
+            {
+                image: "https://placehold.co/600x400/fef3c7/a16207?text=Kneading+Dough",
+                context: "パン作りのレシピサイトで、「生地をこねる」というステップを説明している写真です。",
+                options: [
+                    { text: 'alt="パン生地"', correct: false, explanation: "写真に写っているモノを説明しているだけでは、「何をしているか」という最も重要な情報が伝わりません。" },
+                    { text: 'alt="両手でパン生地を力強くこねている様子"', correct: true, explanation: "正解です。手順を説明する文脈では、写真が示している「行動」を具体的に記述することが重要です。「生地をこねる」というステップの内容が明確に伝わります。" },
+                    { text: 'alt="パン作りの工程"', correct: false, explanation: "あまりにも漠然としており、このステップで具体的に何をするべきかが分かりません。" },
+                    { text: 'alt=""', correct: false, explanation: "この写真はレシピの重要なステップを視覚的に補完しているため、情報価値があります。alt属性を空にしてはいけません。" }
+                ]
+            }
+        ];
+
+        // DOM Elements
+        const quizContainer = document.getElementById('quiz-container');
+        const quizContent = document.getElementById('quiz-content');
+        const resultContainer = document.getElementById('result-container');
+        const contextEl = document.getElementById('context');
+        const quizImageEl = document.getElementById('quiz-image');
+        const optionsContainer = document.getElementById('options-container');
+        const feedbackContainer = document.getElementById('feedback-container');
+        const feedbackTitleEl = document.getElementById('feedback-title');
+        const explanationEl = document.getElementById('explanation').querySelector('p');
+        const explanationIconEl = document.getElementById('explanation-icon');
+        const nextButton = document.getElementById('next-button');
+        const restartButton = document.getElementById('restart-button');
+        const progressBar = document.getElementById('progress-bar');
+        const scoreEl = document.getElementById('score');
+        const finalScoreEl = document.getElementById('final-score');
+        const totalQuestionsEl = document.getElementById('total-questions');
+
+        // Quiz State
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let answerSelected = false;
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function startQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            answerSelected = false;
+            shuffleArray(quizData); // Shuffle questions at the start of the quiz
+            quizContent.style.display = 'block';
+            resultContainer.style.display = 'none';
+            nextButton.style.display = 'none';
+            updateScore();
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            answerSelected = false;
+            feedbackContainer.style.display = 'none';
+            nextButton.style.display = 'none';
+            
+            const currentQuestion = quizData[currentQuestionIndex];
+            
+            contextEl.textContent = currentQuestion.context;
+            quizImageEl.src = currentQuestion.image;
+            
+            optionsContainer.innerHTML = '';
+            
+            const shuffledOptions = [...currentQuestion.options];
+            shuffleArray(shuffledOptions);
+
+            shuffledOptions.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.innerHTML = `<code class="bg-gray-200 text-gray-800 px-2 py-1 rounded">${option.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code>`;
+                button.classList.add('option-button', 'w-full', 'p-4', 'bg-white', 'border-2', 'border-gray-300', 'rounded-lg', 'text-left', 'hover:border-blue-500', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-400', 'focus:ring-opacity-75');
+                button.dataset.correct = option.correct;
+                button.dataset.explanation = option.explanation;
+                button.onclick = () => selectAnswer(button);
+                optionsContainer.appendChild(button);
+            });
+
+            updateProgress();
+        }
+
+        function selectAnswer(selectedButton) {
+            if (answerSelected) return;
+            answerSelected = true;
+
+            const isCorrect = selectedButton.dataset.correct === 'true';
+            const explanation = selectedButton.dataset.explanation;
+
+            if (isCorrect) {
+                score++;
+                feedbackTitleEl.textContent = '正解です！ 🎉';
+                feedbackTitleEl.className = 'text-xl font-bold mb-2 text-green-600';
+                explanationIconEl.textContent = '💡';
+                selectedButton.classList.add('correct');
+            } else {
+                feedbackTitleEl.textContent = '残念！';
+                feedbackTitleEl.className = 'text-xl font-bold mb-2 text-red-600';
+                explanationIconEl.textContent = '🤔';
+                selectedButton.classList.add('incorrect');
+                
+                const correctButton = Array.from(optionsContainer.children).find(btn => btn.dataset.correct === 'true');
+                if(correctButton) {
+                    correctButton.classList.add('correct');
+                }
+            }
+
+            explanationEl.textContent = explanation;
+            feedbackContainer.style.display = 'block';
+            nextButton.style.display = 'inline-block';
+
+            Array.from(optionsContainer.children).forEach(btn => {
+                btn.disabled = true;
+            });
+
+            updateScore();
+        }
+
+
+
+        function showNextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < quizData.length) {
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            quizContent.style.display = 'none';
+            resultContainer.style.display = 'block';
+            finalScoreEl.textContent = score;
+            totalQuestionsEl.textContent = quizData.length;
+        }
+
+        function updateScore() {
+            scoreEl.textContent = score;
+        }
+
+        function updateProgress() {
+            const progress = ((currentQuestionIndex) / quizData.length) * 100;
+            progressBar.style.width = `${progress}%`;
+        }
+        
+        nextButton.addEventListener('click', showNextQuestion);
+        restartButton.addEventListener('click', startQuiz);
+
+        startQuiz();
+    </script>
+</body>
+</html>

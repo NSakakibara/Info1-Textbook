@@ -1,0 +1,431 @@
+<html>
+    <head>
+        <style type="text/css">
+            html, body {
+                height: 100%;
+                margin: 0;
+                padding: 0;
+                font-family: 'Segoe UI', 'Meiryo', 'Hiragino Sans', 'Yu Gothic', Arial, sans-serif;
+                background: linear-gradient(120deg, #e0e7ef 0%, #f7fafc 100%);
+                color: #222;
+            }
+            #outputDiv canvas {
+                width: 100%;
+                height: 100%;
+            }
+            .container {
+                display: flex;
+                flex-direction: column;
+                max-width: 900px;
+                margin: 2.5rem auto 0 auto;
+                background: #fff;
+                border-radius: 18px;
+                box-shadow: 0 4px 24px #0002;
+                padding: 2.5rem 2rem 2rem 2rem;
+                gap: 1.5rem;
+            }
+            .container > div:first-child {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 1.2em 1.5em;
+                margin-bottom: 0.5em;
+            }
+            .container > div:nth-child(2) {
+                margin: 0.5em 0;
+            }
+            .container label, .container select {
+                font-size: 1.05em;
+            }
+            .container input[type="file"] {
+                padding: 0.3em 0.7em;
+                border-radius: 6px;
+                border: 1px solid #b0b8c9;
+                background: #f7fafd;
+                font-size: 1em;
+            }
+            .container input[type="radio"] {
+                accent-color: #2d3e50;
+                margin-right: 0.2em;
+            }
+            .container select, .container input[type="range"] {
+                border-radius: 6px;
+                border: 1px solid #b0b8c9;
+                padding: 0.2em 0.7em;
+                background: #f7fafd;
+                font-size: 1em;
+            }
+            .container a, .container a:visited {
+                color: #2d3e50;
+                text-decoration: underline;
+                font-weight: 500;
+            }
+            .container a.button-link {
+                display: inline-block;
+                background: #2d3e50;
+                color: #fff;
+                border-radius: 6px;
+                padding: 0.5em 1.5em;
+                text-decoration: none;
+                font-weight: bold;
+                margin-left: 1em;
+                transition: background 0.2s;
+            }
+            .container a.button-link:hover {
+                background: #1a2533;
+            }
+            #dropNotification {
+                position: absolute;
+                top: 120px;
+                left: 50%;
+                transform: translateX(-50%);
+                min-width: 320px;
+                max-width: 90vw;
+                text-align: center;
+                pointer-events: none;
+                z-index: 10;
+                background: #fff;
+                border-radius: 12px;
+                box-shadow: 0 2px 12px #0002;
+                border: 1.5px solid #b0b8c9;
+                padding: 1.5em 1em;
+            }
+            .boxed {
+                background-color: #fff;
+                box-shadow: 0 2px 12px #0002;
+                border: 1.5px solid #b0b8c9;
+                border-radius: 14px;
+                padding: 1.5em 1em;
+            }
+            #aboutBox {
+                position: absolute;
+                top: 40px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 60vw;
+                min-width: 320px;
+                max-width: 900px;
+                padding: 2.2em 2em 1.5em 2em;
+                background: #fff;
+                border-radius: 18px;
+                box-shadow: 0 4px 24px #0002;
+                border: 1.5px solid #b0b8c9;
+            }
+            #aboutBox h1 {
+                font-size: 2.1em;
+                margin-bottom: 0.2em;
+            }
+            #aboutBox h2 {
+                font-size: 1.3em;
+                margin-top: 1.2em;
+            }
+            #aboutBox ul {
+                margin-left: 1.2em;
+            }
+            #aboutBox blockquote {
+                background: #f7fafd;
+                border-left: 4px solid #2d3e50;
+                margin: 1em 0;
+                padding: 0.7em 1em;
+                border-radius: 6px;
+                color: #444;
+            }
+            #aboutBox pre {
+                background: #f7fafd;
+                border-radius: 6px;
+                padding: 0.7em 1em;
+                font-size: 0.98em;
+                color: #444;
+            }
+            #loadingIndicator {
+                color: #2d3e50;
+                font-weight: bold;
+                font-size: 1.1em;
+            }
+            #canvasDiv {
+                background: #f7fafd;
+                border-radius: 12px;
+                box-shadow: 0 2px 12px #0001;
+                border: 1.5px solid #b0b8c9;
+                padding: 1em 0.5em;
+                min-height: 320px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #outCanvas {
+                border-radius: 10px;
+                background: #fff;
+                box-shadow: 0 1px 6px #0001;
+                border: 1px solid #e0e7ef;
+            }
+            @media (max-width: 700px) {
+                .container, #aboutBox {
+                    width: 98vw !important;
+                    min-width: unset;
+                    left: 1vw !important;
+                    transform: none !important;
+                    padding: 1em 0.5em 1em 0.5em;
+                }
+                #canvasDiv {
+                    min-height: 180px;
+                }
+            }
+        </style>
+        <script src='https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.js'></script>
+        <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.css'/>
+    </head>
+    <body>
+        <div id="aboutBox" class="boxed">
+<a href="https://github.com/MaPePeR/jsColorblindSimulator"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://camo.githubusercontent.com/a6677b08c955af8400f44c6298f40e7d19cc5b2d/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f677261795f3664366436642e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png"></a>
+
+<h1>jsColorblindSimulator</h1>
+<h2>使い方</h2>
+<p>左上のファイル選択、<strong>ドラッグ＆ドロップ</strong>、または<strong>画像を貼り付け</strong>で画像を読み込めます。読み込んだ後、さまざまな色覚タイプのシミュレーションを選択できます。</p>
+<p>すべての処理はお使いのウェブブラウザ内で完結し、画像が外部に送信されることはありません。</p>
+<p>表示画像はクリック＆ドラッグで移動、（Shift）ダブルクリックやマウスホイールで拡大・縮小できます。</p>
+<p>レンズ機能を使うと、カーソル周辺の元画像やシミュレーション画像を比較できます。インバースレンズでは、元画像とシミュレーション画像が逆になります。</p>
+
+<h2>利用しているアルゴリズム</h2>
+<ul>
+    <li><a href="http://web.archive.org/web/20081014161121/http://www.colorjack.com/labs/colormatrix/" target="blank">http://www.colorjack.com/labs/colormatrix/</a>（オリジナル消失のためweb.archiveリンク）</li>
+    <li><a href="http://web.archive.org/web/20090318054431/http://www.nofunc.com/Color_Blindness_Library" target="blank">http://www.nofunc.com/Color_Blindness_Library</a>（オリジナル消失のためweb.archiveリンク）</li>
+    <li><a href="https://daltonlens.org#libdaltonlens" target="blank">libDaltonLens</a>（Brettelら 1997年論文 <a href="http://vision.psychol.cam.ac.uk/jdmollon/papers/Dichromatsimulation.pdf"><i>Computerized simulation of color appearance for dichromats</i></a> の実装）</li>
+    <li>
+        Machadoらによる <a href="https://www.inf.ufrgs.br/~oliveira/pubs_files/CVD_Simulation/CVD_Simulation.html" target="_blank"><i>A Physiologically-based Model for Simulation of Color Vision Deficiency</i></a> の実装<br>
+        <small>
+            <strong>注:</strong> 以前のバージョンでは<a href="https://github.com/MaPePeR/jsColorblindSimulator/issues/3" target="_blank">実装ミス</a>により誤った結果が出ていました。
+        </small>
+    </li>
+</ul>
+<h3>最初の2つのアルゴリズムは精度が保証されていません。</h3>
+<a href="http://kaioa.com/node/75#comment-247" target="blank">ColorMatrixアルゴリズムに関するコメント</a>：
+<blockquote>
+<p>ご指摘の通り、ColorMatrixバージョンは非常に単純化されており、正確ではありません。このカラーマトリックスは一晩で作ったもので、その後多くの場所で使われています...。本当はこのページを削除すべきかもしれません！あくまで雰囲気を掴むためのもので、正確なシミュレーションにはなりません。</p>
+<p>色覚シミュレーションの簡単なスクリプトとしては、以下が最も優れています：</p>
+<p><a href="http://www.nofunc.com/Color_Blindness_Library/" target="blank">http://www.nofunc.com/Color_Blindness_Library/</a> - XYZ色空間の「混同線」を使って計算しています（JavaScript実装なのでPythonにも変換しやすいです）。</p>
+<p>他にもいくつか手法がありますが、実際にどのように見えるかは個人差も大きく、あくまで一般化されたモデルです。</p>
+</blockquote>
+
+2つ目の非商用アルゴリズムの著作権表示：
+<blockquote><pre>
+The Color Blind Simulation function is
+copyright (c) 2000-2001 by Matthew Wickline and the
+Human-Computer Interaction Resource Network ( http://hcirn.com/ ).
+
+It is used with the permission of Matthew Wickline and HCIRN,
+and is freely available for non-commercial use. For commercial use, please
+contact the Human-Computer Interaction Resource Network ( http://hcirn.com/ ).
+</pre></blockquote>
+
+3つ目のアルゴリズムに関するコメント：
+<blockquote><p>
+Brettelらの手法は1997年に発表され、当時のCRTモニター向けでしたが、現代のsRGBモニターにも適用されています。完全な二色覚に対してはかなり正確と考えられますが、あくまで近似であり、モニターのキャリブレーションや照明環境、個人差など多くの要因で完全ではありません。一般的に、小さな点や線などには正確ですが、広い明るい領域では強調されすぎる傾向があります。
+</p></blockquote>
+
+        </div>
+        <div class="container">
+          <div class="menu-panel">
+            <div style="margin-bottom:1em">
+              <input type="file" id="fileInput"/>
+            </div>
+            <div class="section-group">
+              <div class="section-label">色覚タイプ</div>
+              <div class="radio-group">
+                <label><input type="radio" name="colorblindType" value="Normal" checked/>正常</label>
+                <label><input type="radio" name="colorblindType" value="Protanopia"/>1型2色覚</label>
+                <label><input type="radio" name="colorblindType" value="Protanomaly"/>1型3色覚</label>
+                <label><input type="radio" name="colorblindType" value="Deuteranopia"/>2型2色覚</label>
+                <label><input type="radio" name="colorblindType" value="Deuteranomaly"/>2型3色覚</label>
+                <label><input type="radio" name="colorblindType" value="Tritanopia"/>3型2色覚</label>
+                <label><input type="radio" name="colorblindType" value="Tritanomaly"/>3型3色覚</label>
+                <label><input type="radio" name="colorblindType" value="Achromatopsia"/>全色盲</label>
+                <a href="https://www.youtube.com/watch?v=kYZ00B5O_VQ" target="_blank" style="color:#888;"><input type="radio" name="colorblindType" value="Achromatomaly" disabled/>Achromatomaly</a>
+              </div>
+            </div>
+            <div class="section-group">
+              <div class="section-label">アルゴリズム</div>
+              <select id="method">
+                <option value="simpl">簡易（ColorMatrix）</option>
+                <option value="hcirn">非商用限定（HCIRN）</option>
+                <option value="brett" selected>高精度（Brettelら 1997）</option>
+                <option value="macha">高精度（Machadoら 2009）</option>
+              </select>
+            </div>
+            <div class="section-group" id="severity-group" style="display:none;">
+              <div class="section-label">重症度</div>
+              <input type="range" min="0" max="100" value="50" class="slider" id="severity">
+            </div>
+            <div class="section-group">
+              <div class="section-label">レンズ</div>
+              <div class="radio-group">
+                <label><input type="radio" name="lens" value="No" checked/>なし</label>
+                <label><input type="radio" name="lens" value="Normal"/>ノーマルレンズ</label>
+                <label><input type="radio" name="lens" value="Inverse"/>インバースレンズ</label>
+              </div>
+            </div>
+            <div class="section-group" style="margin-top:1em;">
+              <a href="#" class="button-link" onclick="panZoomImage.translateX=0;panZoomImage.translateY=0;panZoomImage.scale=1;panZoomImage.redraw();return false;">表示リセット</a>
+              <a href="#" target="blank" id="imageLink" class="button-link" style="display: none">シミュ画像を新規ウィンドウで開く</a>
+            </div>
+            <div class="section-group">
+              <span id="loadingIndicator" style="display:none">計算中...</span>
+            </div>
+          </div>
+          <div class="canvas-panel">
+            <div id="canvasDiv">
+              <div id="dropNotification" class="boxed" style="display: none"><h1>画像をここにドロップ</h1></div>
+              <canvas id="outCanvas">お使いのブラウザは &lt;canvas&gt; に対応していません。</canvas>
+            </div>
+          </div>
+        </div>
+        <script src="panZoomImage.js"></script>
+        <script src="brettel_colorblind_simulation.js"></script>
+        <script src="hcirn_colorblind_simulation.js"></script>
+        <script src="machado_colorblind_simulation.js"></script>
+        <script src="colorblind.js"></script>
+        <script type="text/javascript">
+
+var loadingIndicator = document.getElementById('loadingIndicator');
+function filterOrImageChanged() {
+
+    var type = document.querySelector('input[name = "colorblindType"]:checked').value;
+    var method = document.querySelector('#method option:checked').value;
+    var filterName = method + type;
+    console.log("filterOrImageChanged: " + filterName);
+
+    document.getElementById('imageLink').style.display = type === "Normal" ? "none" : "inline";
+    var isMachado = method == "macha";
+    document.getElementById('severity').parentElement.style.display = isMachado ? 'inline' : 'none';
+    ['Protanopia', 'Deuteranopia', 'Tritanopia', 'Achromatopsia', 'Achromatomaly'].forEach((item, i) => {
+        document.querySelector('input[type="radio"][value="' + item + '"]').parentElement.style.display = isMachado ? 'none' : 'inline';
+    });
+    if (method == 'macha' && type != "Normal") {
+        filterName += "_" + document.getElementById('severity').value
+    }
+
+
+    if (currentImage) {
+        loadingIndicator.style.display="inline";
+        NProgress.set(0.2);
+        setTimeout(function () {
+            getFilteredImage(currentImage, filterName, function (filteredImage, url) {
+                document.getElementById('imageLink').href = url;
+                panZoomImage.displayImage(filteredImage);
+                NProgress.done();
+                loadingIndicator.style.display="none";
+            });
+        }, 0);
+    }
+}
+
+function lensChanged() {
+    var v = document.querySelector('input[name = "lens"]:checked').value;
+    if (v === "No") {
+        panZoomImage.lens = 0;
+    } else if (v === "Normal") {
+        panZoomImage.lens = 1;
+    } else if (v === "Inverse") {
+        panZoomImage.lens = 2;
+    } else {
+        throw "Illegal Lens Type";
+    }
+    panZoomImage.redraw();
+}
+(function() {
+    var radios = document.querySelectorAll('input[name = "colorblindType"]');
+    var i;
+    for (i = 0; i < radios.length; i++) {
+        radios[i].onclick = filterOrImageChanged;
+    }
+    radios = document.querySelectorAll('input[name = "lens"]');
+    for (i = 0; i < radios.length; i++) {
+        radios[i].onclick = lensChanged;
+    }
+    document.getElementById("method").onchange = filterOrImageChanged;
+    document.getElementById("severity").onchange = filterOrImageChanged;
+})();
+
+//Based on http://stackoverflow.com/a/3814285/2256700
+var fileInput = document.getElementById('fileInput');
+var currentImage;
+fileInput.onchange = function (evt) {
+    var tgt = evt.target || window.event.srcElement,
+        files = tgt.files;
+    readFile(files);
+};
+
+function readFile(files) {
+    document.getElementById("aboutBox").style.display = "none";
+    // FileReader support
+    if (FileReader && files && files.length) {
+        if (files.length !== 1) {
+            alert("Can only show one file at a time");
+            return;
+        }
+        if (!files[0].type.match('image.*')) {
+            alert("Was not an image file. :(");
+            return;
+        }
+        NProgress.set(0.0);
+        var fr = new FileReader();
+        fr.onload = function () {
+            var img = new Image();
+            img.onload = function () {
+                //createFilteredImage(this);
+                currentImage = this;
+                panZoomImage.setHiddenLensImage(currentImage);
+                clearImageCache();
+                filterOrImageChanged();
+            };
+            img.src = fr.result;
+        };
+        fr.readAsDataURL(files[0]);
+    }
+    // Not supported
+    else {
+        alert("Your Browser does not support the required Features.");
+    }
+}
+var canvasDiv = document.getElementById("canvasDiv");
+var dropNotification = document.getElementById("dropNotification");
+// Based on http://www.html5rocks.com/en/tutorials/file/dndfiles/
+canvasDiv.addEventListener('drop', function (evt) {
+    evt.stopPropagation();
+    evt.preventDefault();
+
+    dropNotification.style.display = "none";
+    readFile(evt.dataTransfer.files);
+}, false);
+
+canvasDiv.addEventListener('dragover', function (evt) {
+    document.getElementById("aboutBox").style.display = "none";
+    evt.stopPropagation();
+    evt.preventDefault();
+    dropNotification.style.display = "block";
+    evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
+}, false);
+
+canvasDiv.addEventListener('dragleave', function (evt) {
+    dropNotification.style.display = "none";
+}, false);
+
+//Retrieve Image from Clipboard: http://stackoverflow.com/a/15369753/2256700
+document.onpaste = function (event) {
+    // use event.originalEvent.clipboard for newer chrome versions
+    var items = (event.clipboardData  || event.originalEvent.clipboardData).items;
+    // find pasted image among pasted items
+    var blob = null;
+    for (var i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image") === 0) {
+            blob = items[i].getAsFile();
+        }
+    }
+    // load image if there is a pasted image
+    if (blob !== null) {
+        readFile([blob]);
+    }
+};
+        </script>
+    </body>
+</html>
