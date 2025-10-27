@@ -44,6 +44,19 @@
             opacity: 0.5;
             cursor: grabbing;
         }
+        /* タッチ操作中のゴースト要素のスタイル */
+        .dragging-touch {
+            position: fixed; /* 画面に固定 */
+            pointer-events: none; /* イベントを透過させる */
+            z-index: 1000;
+            opacity: 0.8;
+            transform: scale(1.1);
+        }
+        /* ドラッグ元の要素を半透明にする */
+        .opacity-30 {
+            opacity: 0.3;
+        }
+
         .cauldron-drop-zone.dragover {
             transform: scale(1.05);
             box-shadow: 0 0 30px 10px rgba(72, 255, 201, 0.7);
@@ -173,6 +186,12 @@
             let currentStep = 0;
             let draggedIngredientId = null;
 
+            // --- タッチ操作用の変数 ---
+            let ghostElement = null;
+            let isTouchDragging = false;
+            let startTouchX = 0;
+            let startTouchY = 0;
+
             // --- DOM Elements ---
             const recipeList = document.getElementById('recipe-list');
             const ingredientsShelf = document.getElementById('ingredients-shelf');
@@ -235,6 +254,10 @@
 
                     ingElement.addEventListener('dragstart', handleDragStart);
                     ingElement.addEventListener('dragend', handleDragEnd);
+
+                    // --- モバイル用のタッチイベントを追加 ---
+                    ingElement.addEventListener('touchstart', handleTouchStart, { passive: true }); // スクロールを妨げないよう passive: true
+
                     ingredientsShelf.appendChild(ingElement);
                 });
                 
@@ -325,12 +348,17 @@
 
             // --- Drag and Drop Event Handlers ---
             function handleDragStart(e) {
+                if (isTouchDragging) { // タッチ操作中はマウスドラッグを無効化
+                    e.preventDefault();
+                    return;
+                }
                 draggedIngredientId = e.target.closest('.ingredient').id;
                 e.target.closest('.ingredient').classList.add('dragging');
                 e.dataTransfer.effectAllowed = 'move';
             }
 
             function handleDragEnd(e) {
+                if (isTouchDragging) return;
                 e.target.closest('.ingredient').classList.remove('dragging');
             }
             
@@ -354,8 +382,110 @@
                 handleIngredientDrop();
             });
             
+            // --- モバイル用タッチイベントのハンドラー ---
+
+            function handleTouchStart(e) {
+                if (e.touches.length !== 1) return; // マルチタッチは無視
+                const ingElement = e.target.closest('.ingredient');
+                if (!ingElement) return;
+
+                // ドラッグ開始の準備
+                draggedIngredientId = ingElement.id;
+                const touch = e.touches[0];
+                startTouchX = touch.clientX;
+                startTouchY = touch.clientY;
+                // isTouchDragging は move で判定する
+            }
+
+            function handleTouchMove(e) {
+                if (!draggedIngredientId) return; // ドラッグが開始されていない
+                if (e.touches.length !== 1) return; // マルチタッチ
+
+                const touch = e.touches[0];
+
+                if (!isTouchDragging) {
+                    // 5px以上動いたらドラッグ開始とみなす
+                    const deltaX = Math.abs(touch.clientX - startTouchX);
+                    const deltaY = Math.abs(touch.clientY - startTouchY);
+
+                    if (deltaX < 5 && deltaY < 5) {
+                        return; // 移動量が少ない場合は何もしない
+                    }
+
+                    // ドラッグ開始
+                    isTouchDragging = true;
+                    
+                    const ingElement = document.getElementById(draggedIngredientId);
+                    if (!ingElement) return;
+
+                    // 指に追従するゴースト要素を作成
+                    ghostElement = ingElement.cloneNode(true);
+                    ghostElement.classList.add('dragging-touch');
+                    document.body.appendChild(ghostElement);
+                    
+                    // 元の要素を半透明に
+                    ingElement.classList.add('opacity-30');
+                }
+
+                // ドラッグ中の処理
+                if (isTouchDragging) {
+                    // スクロールを防止
+                    e.preventDefault();
+                    
+                    // ゴースト要素を指の位置に更新
+                    updateGhostPosition(touch);
+
+                    // 鍋の上にあるか判定
+                    const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
+                    if (elementAtPoint && elementAtPoint.closest('.cauldron-drop-zone')) {
+                        cauldronDropZone.classList.add('dragover');
+                    } else {
+                        cauldronDropZone.classList.remove('dragover');
+                    }
+                }
+            }
+
+            function handleTouchEnd(e) {
+                if (isTouchDragging && ghostElement) {
+                    // ドラッグ終了時の処理
+                    const touch = e.changedTouches[0];
+                    const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
+                    
+                    if (elementAtPoint && elementAtPoint.closest('.cauldron-drop-zone')) {
+                        // 鍋の上で指が離れた場合
+                        handleIngredientDrop();
+                    }
+
+                    // クリーンアップ
+                    document.body.removeChild(ghostElement);
+                    ghostElement = null;
+                    cauldronDropZone.classList.remove('dragover');
+                    
+                    const originalElement = document.getElementById(draggedIngredientId);
+                    if (originalElement) {
+                        originalElement.classList.remove('opacity-30');
+                    }
+                }
+
+                // 状態をリセット
+                isTouchDragging = false;
+                draggedIngredientId = null;
+                startTouchX = 0;
+                startTouchY = 0;
+            }
+
+            function updateGhostPosition(touch) {
+                 if (!ghostElement) return;
+                 // ゴースト要素が指の中心に来るように調整
+                 ghostElement.style.left = `${touch.clientX - ghostElement.offsetWidth / 2}px`;
+                 ghostElement.style.top = `${touch.clientY - ghostElement.offsetHeight / 2}px`;
+            }
+
             // --- Event Listeners ---
-            // The restart button's event is now handled within showGameResult
+            // グローバルに touchmove と touchend を登録
+            document.addEventListener('touchmove', handleTouchMove, { passive: false });
+            document.addEventListener('touchend', handleTouchEnd);
+
 
             // --- Initial Setup ---
             setupGame(false); // 最初は高難易度モードで開始
@@ -363,6 +493,7 @@
     </script>
 </body>
 </html>
+
 
 
 
