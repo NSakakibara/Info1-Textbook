@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>リンク解読チャレンジ 🔑</title>
+    <!-- Tailwind CSSを読み込み -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Inter) を読み込み -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .screen { display: none; }
+        .screen.active { display: flex; }
+        .link-item {
+            transition: background-color 0.2s, transform 0.2s;
+            cursor: pointer;
+        }
+        .link-item:hover {
+            transform: translateX(4px);
+            background-color: #eff6ff; /* blue-50 */
+        }
+        .dark .link-item:hover {
+            background-color: #1e293b; /* slate-800 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 flex items-center justify-center min-h-screen p-4">
+
+    <div id="game-container" class="w-full max-w-xl bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
+
+        <!-- スタート画面 -->
+        <div id="start-screen" class="screen active flex-col p-8 text-center">
+            <h1 class="text-4xl font-bold text-gray-800 dark:text-white mb-2">リンク解読チャレンジ 🔑</h1>
+            <p class="text-gray-600 dark:text-gray-300 mb-6">君は目的の情報を探す探検家。ウェブページにあるリンクの「テキストだけ」を頼りに、目的のページを探し出そう！</p>
+            <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg text-left mb-6">
+                <h2 class="font-bold text-lg mb-2">このゲームの背景</h2>
+                <p class="text-sm">目の不自由な方などが利用する「スクリーンリーダー」というソフトには、ページ内のリンクだけを一覧表示する機能があります。このゲームでは、その体験をシミュレーションします。</p>
+            </div>
+            <button id="start-button" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-lg shadow-lg transition-transform transform hover:scale-105">
+                探検に出発する
+            </button>
+        </div>
+        
+        <!-- ゲーム画面 -->
+        <div id="game-screen" class="screen hidden flex-col">
+            <header class="bg-blue-600 p-4 text-white">
+                <p class="text-sm">探検の目的</p>
+                <h1 id="objective-text" class="text-2xl font-bold"></h1>
+            </header>
+            <main class="p-6 flex-grow">
+                <h2 class="text-xl font-bold text-gray-800 dark:text-white mb-2">リンク一覧</h2>
+                <p id="stage-description" class="text-gray-600 dark:text-gray-300 mb-4"></p>
+                <div id="links-list" class="space-y-2 border-t border-gray-200 dark:border-gray-600 pt-4">
+                    <!-- リンクがここに挿入されます -->
+                </div>
+            </main>
+        </div>
+
+        <!-- 中間メッセージ画面 -->
+        <div id="interstitial-screen" class="screen hidden flex-col p-8 text-center justify-center">
+            <h2 class="text-2xl font-bold mb-4">うーん、難しい...</h2>
+            <p class="text-gray-600 dark:text-gray-300 mb-6">「こちら」や「詳細」だけでは、どこに何があるか分かりませんでしたね。<br>スクリーンリーダーの利用者は、このようにリンクのテキストだけを頼りにすることがあります。</p>
+            <p class="text-gray-600 dark:text-gray-300 mb-8">次は、分かりやすいリンクが設置されたページを探検してみましょう！</p>
+            <button id="next-stage-button" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg">
+                次のステージへ
+            </button>
+        </div>
+        
+        <!-- 結果画面 -->
+        <div id="result-screen" class="screen hidden flex-col p-8 text-center justify-center">
+            <h2 id="result-title" class="text-4xl font-bold mb-4"></h2>
+            <p id="result-message" class="text-lg text-gray-600 dark:text-gray-300 mb-6"></p>
+            <div id="result-learning" class="bg-yellow-100 dark:bg-yellow-900/50 border-l-4 border-yellow-500 text-yellow-800 dark:text-yellow-200 p-4 rounded-lg mb-8 text-left"></div>
+            <button id="retry-button" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg">
+                もう一度探検する
+            </button>
+        </div>
+
+    </div>
+
+<script>
+// --- DOM要素 ---
+const screens = {
+    start: document.getElementById('start-screen'),
+    game: document.getElementById('game-screen'),
+    interstitial: document.getElementById('interstitial-screen'),
+    result: document.getElementById('result-screen'),
+};
+const startButton = document.getElementById('start-button');
+const nextStageButton = document.getElementById('next-stage-button');
+const retryButton = document.getElementById('retry-button');
+
+const objectiveText = document.getElementById('objective-text');
+const stageDescription = document.getElementById('stage-description');
+const linksList = document.getElementById('links-list');
+
+const resultTitle = document.getElementById('result-title');
+const resultMessage = document.getElementById('result-message');
+const resultLearning = document.getElementById('result-learning');
+
+// --- ゲーム設定 ---
+const OBJECTIVE = '入学願書をダウンロードする';
+const stagesData = [
+    {
+        description: 'このページのリンクは、どれも曖昧な言葉で書かれているようだ...',
+        links: [
+            { text: 'こちら', isCorrect: false },
+            { text: '詳細', isCorrect: false },
+            { text: 'ここをクリック', isCorrect: true }, // 正解はランダムに決めるべきだが、ここでは固定
+            { text: '続きを読む', isCorrect: false },
+            { text: 'PDFファイル', isCorrect: false },
+        ]
+    },
+    {
+        description: 'このページのリンクは、具体的で分かりやすい言葉で書かれているぞ！',
+        links: [
+            { text: '学校紹介パンフレット (PDF)', isCorrect: false },
+            { text: '入学願書ダウンロード', isCorrect: true },
+            { text: '部活動の紹介ページ', isCorrect: false },
+            { text: '学校へのアクセスマップ', isCorrect: false },
+            { text: '年間行事カレンダー', isCorrect: false },
+        ]
+    }
+];
+
+// --- ゲームの状態 ---
+let currentStageIndex = 0;
+
+// --- イベントリスナー ---
+startButton.addEventListener('click', () => startGame(0));
+nextStageButton.addEventListener('click', () => startGame(1));
+retryButton.addEventListener('click', () => switchScreen('start'));
+
+// --- ゲームロジック ---
+
+function switchScreen(screenId) {
+    for (const key in screens) {
+        screens[key].classList.remove('active');
+        screens[key].classList.add('hidden');
+    }
+    screens[screenId].classList.add('active');
+    screens[screenId].classList.remove('hidden');
+}
+
+function startGame(stageIndex) {
+    currentStageIndex = stageIndex;
+    objectiveText.textContent = OBJECTIVE;
+    renderStage(currentStageIndex);
+    switchScreen('game');
+}
+
+function renderStage(stageIndex) {
+    const stage = stagesData[stageIndex];
+    stageDescription.textContent = stage.description;
+    linksList.innerHTML = '';
+    
+    // リンクをシャッフルして表示
+    const shuffledLinks = [...stage.links].sort(() => Math.random() - 0.5);
+
+    shuffledLinks.forEach(linkInfo => {
+        const linkEl = document.createElement('div');
+        linkEl.textContent = linkInfo.text;
+        linkEl.className = 'link-item p-3 border-b border-gray-200 dark:border-gray-600';
+        linkEl.setAttribute('role', 'button');
+        linkEl.tabIndex = 0;
+        linkEl.addEventListener('click', () => handleLinkClick(linkInfo.isCorrect));
+        linkEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                handleLinkClick(linkInfo.isCorrect);
+            }
+        });
+        linksList.appendChild(linkEl);
+    });
+}
+
+function handleLinkClick(isCorrect) {
+    if (currentStageIndex === 0) { // 曖昧なリンクのステージ
+        if (isCorrect) {
+            // 本来は分かりにくいので失敗としたいが、ゲーム進行のため中間画面へ
+            switchScreen('interstitial');
+        } else {
+            showResult(false);
+        }
+    } else { // 分かりやすいリンクのステージ
+        if (isCorrect) {
+            showResult(true);
+        } else {
+             // 分かりやすいステージでは間違えてもペナルティなしで再挑戦させる
+            linksList.classList.add('animate-pulse');
+            setTimeout(()=> linksList.classList.remove('animate-pulse'), 500);
+        }
+    }
+}
+
+function showResult(isWin) {
+    if (isWin) {
+        resultTitle.textContent = '目的達成！🎉';
+        resultTitle.className = 'text-4xl font-bold mb-4 text-green-500';
+        resultMessage.textContent = '分かりやすいリンクのおかげで、すぐに目的の情報を見つけられました！';
+        resultLearning.innerHTML = '<p class="font-bold mb-2">学習ポイント</p><p>具体的なリンクテキストは、スクリーンリーダーの利用者など、多くの人にとってウェブサイトを使いやすくします。「〇〇をダウンロード」のように、リンク先で何ができるかが分かると最高です！</p>';
+    } else {
+        resultTitle.textContent = '探検失敗...';
+        resultTitle.className = 'text-4xl font-bold mb-4 text-red-500';
+        resultMessage.textContent = '違うリンクをクリックしてしまい、目的の情報は見つかりませんでした。';
+        resultLearning.innerHTML = '<p class="font-bold mb-2">学習ポイント</p><p>「こちら」などの曖昧なリンクは、リンク先を推測するしかなく、非常に不便です。リンクのテキストだけで、リンク先のページの内容が分かるようにすることが大切です。</p>';
+    }
+    switchScreen('result');
+}
+
+</script>
+</body>
+</html>
+
+
