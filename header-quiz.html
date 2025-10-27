@@ -190,6 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let draggedTag = null;
     let ghostElement = null; // タッチ操作用のゴースト要素
     let currentDropTarget = null; // 現在タッチホバー中のターゲット
+    let dropTargets = []; // ドロップ先要素の配列 (タッチ操作の最適化用)
 
     // --- Functions ---
     
@@ -276,21 +277,35 @@ document.addEventListener('DOMContentLoaded', () => {
         
         updateGhostPosition(e.touches[0]);
 
-        // ゴーストを一時的に非表示にして、指の下にある要素を取得
-        ghostElement.style.display = 'none';
-        const elementUnder = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
-        ghostElement.style.display = ''; // ゴーストを再表示
+        // --- elementFromPointの代わりに座標計算でターゲットを特定 ---
+        const touch = e.touches[0];
+        let foundTarget = null;
 
-        const dropTarget = elementUnder ? elementUnder.closest('.drop-target') : null;
+        // キャッシュしたドロップ先をループ
+        for (const target of dropTargets) {
+            const rect = target.getBoundingClientRect();
+            // 指の座標が要素の矩形内にあるかチェック
+            if (touch.clientX >= rect.left && touch.clientX <= rect.right &&
+                touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+                foundTarget = target;
+                break; // 座標が重なる最初の要素を見つけたら終了
+            }
+        }
+
+        // ゴーストを一時的に非表示にして、指の下にある要素を取得 (旧ロジック)
+        // ghostElement.style.display = 'none';
+        // const elementUnder = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+        // ghostElement.style.display = ''; // ゴーストを再表示
+        // const dropTarget = elementUnder ? elementUnder.closest('.drop-target') : null;
 
         // ホバー中のターゲットが変更された場合、スタイルを更新
-        if (currentDropTarget && currentDropTarget !== dropTarget) {
+        if (currentDropTarget && currentDropTarget !== foundTarget) {
             currentDropTarget.classList.remove('drag-over');
         }
 
-        if (dropTarget) {
-            dropTarget.classList.add('drag-over');
-            currentDropTarget = dropTarget;
+        if (foundTarget) {
+            foundTarget.classList.add('drag-over');
+            currentDropTarget = foundTarget;
         } else {
             currentDropTarget = null;
         }
@@ -299,10 +314,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('touchend', (e) => {
         if (!draggedTag || !ghostElement) return;
 
-        // タッチ終了地点の要素を取得
+        // タッチ終了地点の要素を取得 (旧ロジック)
         // (ghostElementはpointer-events:noneなので、その下の要素が取得される)
-        const elementUnder = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-        const dropTarget = elementUnder ? elementUnder.closest('.drop-target') : null;
+        // const elementUnder = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+        // const dropTarget = elementUnder ? elementUnder.closest('.drop-target') : null;
+
+        // touchmoveで最後にホバーしていた要素をドロップ先とする
+        const dropTarget = currentDropTarget;
 
         if (dropTarget) {
             applyTag(dropTarget, draggedTag);
@@ -314,6 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ghostElement = null;
         draggedTag = null;
         currentDropTarget = null;
+        // dropTargetsはクリアしない (レベルリセットまで要素は変わらないため)
 
         // 万が一 .drag-over が残っていたら削除
         contentArea.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
@@ -334,6 +353,10 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function addDropListeners() {
         const targets = contentArea.querySelectorAll('.drop-target');
+        
+        // タッチ操作用にドロップ先をキャッシュ
+        dropTargets = Array.from(targets);
+
         targets.forEach(target => {
             // --- Mouse Events ---
             target.addEventListener('dragover', (e) => {
@@ -466,3 +489,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
+
