@@ -11,11 +11,12 @@
     <style>
         body {
             font-family: 'M PLUS Rounded 1c', sans-serif;
-            touch-action: none;
+            /* body全体のtouch-action:none;は、モーダル等のスクロールを妨げるため削除 */
         }
         .tag {
             cursor: grab;
             user-select: none;
+            touch-action: none; /* タグ自体をタッチした時にページがスクロールしないように設定 */
         }
         .tag:active {
             cursor: grabbing;
@@ -57,6 +58,14 @@
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
         }
+        /* タッチ操作中に表示するゴースト要素のスタイル */
+        .ghost-tag {
+            position: absolute;
+            z-index: 1000;
+            opacity: 0.8;
+            pointer-events: none; /* ゴースト要素自体がイベントを拾わないようにする */
+            transition: none; /* クローン元のtransitionを無効化 */
+        }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen p-4">
@@ -85,6 +94,7 @@
                 <div class="mt-8">
                     <h3 class="font-bold text-center text-slate-600 mb-4">タグの道具箱</h3>
                     <div id="tag-toolbox" class="grid grid-cols-2 gap-4">
+                        <!-- draggable="true" はPCのマウス操作のために残します -->
                         <div class="tag bg-white p-4 rounded-lg shadow-md text-center" draggable="true" data-tag="h1">
                             <span class="font-bold text-2xl text-violet-600">見出し1</span>
                             <code class="block text-sm text-slate-500">&lt;h1&gt;</code>
@@ -176,7 +186,10 @@ document.addEventListener('DOMContentLoaded', () => {
         ]
     };
 
+    // --- Drag State Variables ---
     let draggedTag = null;
+    let ghostElement = null; // タッチ操作用のゴースト要素
+    let currentDropTarget = null; // 現在タッチホバー中のターゲット
 
     // --- Functions ---
     
@@ -203,6 +216,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetLevel() {
         const targets = contentArea.querySelectorAll('.drop-target');
         targets.forEach(target => {
+            // スタイルクラスをリセット
+            const classesToRemove = ['h1-style', 'h2-style', 'h3-style', 'p-style', 'tagged'];
+            target.classList.remove(...classesToRemove);
+            // 基本クラスを再設定
             target.className = 'drop-target p-4 rounded-lg bg-white shadow';
             target.removeAttribute('data-tag');
             target.removeAttribute('data-tag-display');
@@ -212,23 +229,113 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Drag and Drop Logic ---
 
+    // --- Mouse Drag Events (Desktop) ---
+    // PCでのマウス操作用（変更なし）
     tagToolbox.addEventListener('dragstart', (e) => {
-        if (e.target.classList.contains('tag')) {
-            draggedTag = e.target.dataset.tag;
+        const tagElement = e.target.closest('.tag');
+        if (tagElement) {
+            draggedTag = tagElement.dataset.tag;
             e.dataTransfer.setData('text/plain', draggedTag);
             e.target.style.opacity = '0.5';
         }
     });
 
     tagToolbox.addEventListener('dragend', (e) => {
-        if (e.target.classList.contains('tag')) {
+        const tagElement = e.target.closest('.tag');
+        if (tagElement) {
             e.target.style.opacity = '1';
         }
+        draggedTag = null;
     });
 
+    // --- Touch Drag Events (Mobile/Tablet) ---
+    // iPadやスマートフォンでのタッチ操作用
+    tagToolbox.addEventListener('touchstart', (e) => {
+        const tagElement = e.target.closest('.tag');
+        if (tagElement) {
+            // e.preventDefault(); // CSSのtouch-action:noneで対応
+            draggedTag = tagElement.dataset.tag;
+
+            // ドラッグ中のゴースト要素を作成
+            ghostElement = tagElement.cloneNode(true);
+            ghostElement.classList.add('ghost-tag'); // スタイルを適用
+            document.body.appendChild(ghostElement);
+
+            // ゴースト要素のサイズと位置を初期化
+            ghostElement.style.width = `${tagElement.offsetWidth}px`;
+            ghostElement.style.height = `${tagElement.offsetHeight}px`;
+            updateGhostPosition(e.touches[0]);
+        }
+    }, { passive: true }); // passive:trueでも動作するはず (CSSでtouch-actionを設定したため)
+
+    document.addEventListener('touchmove', (e) => {
+        if (!draggedTag || !ghostElement) return;
+
+        // ドラッグ中はページのスクロールを禁止
+        e.preventDefault();
+        
+        updateGhostPosition(e.touches[0]);
+
+        // ゴーストを一時的に非表示にして、指の下にある要素を取得
+        ghostElement.style.display = 'none';
+        const elementUnder = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+        ghostElement.style.display = ''; // ゴーストを再表示
+
+        const dropTarget = elementUnder ? elementUnder.closest('.drop-target') : null;
+
+        // ホバー中のターゲットが変更された場合、スタイルを更新
+        if (currentDropTarget && currentDropTarget !== dropTarget) {
+            currentDropTarget.classList.remove('drag-over');
+        }
+
+        if (dropTarget) {
+            dropTarget.classList.add('drag-over');
+            currentDropTarget = dropTarget;
+        } else {
+            currentDropTarget = null;
+        }
+    }, { passive: false }); // preventDefaultを呼ぶため passive: false が必要
+
+    document.addEventListener('touchend', (e) => {
+        if (!draggedTag || !ghostElement) return;
+
+        // タッチ終了地点の要素を取得
+        // (ghostElementはpointer-events:noneなので、その下の要素が取得される)
+        const elementUnder = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+        const dropTarget = elementUnder ? elementUnder.closest('.drop-target') : null;
+
+        if (dropTarget) {
+            applyTag(dropTarget, draggedTag);
+            dropTarget.classList.remove('drag-over');
+        }
+        
+        // クリーンアップ
+        document.body.removeChild(ghostElement);
+        ghostElement = null;
+        draggedTag = null;
+        currentDropTarget = null;
+
+        // 万が一 .drag-over が残っていたら削除
+        contentArea.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    });
+
+    /**
+     * タッチ位置に合わせてゴースト要素を移動
+     */
+    function updateGhostPosition(touch) {
+        if (!ghostElement) return;
+        // ゴーストが指の中心に来るように調整
+        ghostElement.style.left = `${touch.clientX - ghostElement.offsetWidth / 2}px`;
+        ghostElement.style.top = `${touch.clientY - ghostElement.offsetHeight / 2}px`;
+    }
+
+    /**
+     * Drop Targetにイベントリスナーを追加 (PCのマウス操作用)
+     */
     function addDropListeners() {
         const targets = contentArea.querySelectorAll('.drop-target');
         targets.forEach(target => {
+            // --- Mouse Events ---
             target.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 target.classList.add('drag-over');
@@ -247,8 +354,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    /**
+     * ターゲット要素にタグを適用する (共通関数)
+     */
     function applyTag(target, tag) {
-        target.className = 'drop-target p-4 rounded-lg bg-white shadow tagged';
+        // 既存のスタイルを一度リセット
+        const classesToRemove = ['h1-style', 'h2-style', 'h3-style', 'p-style'];
+        target.classList.remove(...classesToRemove);
+
+        // 新しいスタイルとタグ情報を適用
+        target.classList.add('tagged');
         target.classList.add(`${tag}-style`);
         target.dataset.tag = tag;
         target.dataset.tagDisplay = `<${tag}>`;
@@ -261,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return {
                 tag: el.dataset.tag || 'p', // Default to 'p' if untagged
                 text: el.textContent,
-                level: el.dataset.tag ? parseInt(el.dataset.tag.replace('h', '')) : 0,
+                level: el.dataset.tag ? (el.dataset.tag.startsWith('h') ? parseInt(el.dataset.tag.replace('h', '')) : 0) : 0,
             };
         });
 
