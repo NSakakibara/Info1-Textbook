@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>魔法使いのポーション調合</title>
+    <title>魔法使いのポーション調合2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500&display=swap" rel="stylesheet">
     <style>
@@ -256,7 +256,7 @@
                     ingElement.addEventListener('dragend', handleDragEnd);
 
                     // --- モバイル用のタッチイベントを追加 ---
-                    ingElement.addEventListener('touchstart', handleTouchStart, { passive: true }); // スクロールを妨げないよう passive: true
+                    ingElement.addEventListener('touchstart', handleTouchStart, { passive: false }); // スクロールを防ぐ可能性があることをブラウザに伝える
 
                     ingredientsShelf.appendChild(ingElement);
                 });
@@ -493,6 +493,7 @@
     </script>
 </body>
 </html>
+
 
 
 
