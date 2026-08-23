@@ -1,388 +1,637 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>色覚シミュレーションツール</title>
-    <!-- Tailwind CSSをCDNから読み込み -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* フォントの設定 */
-        body {
-            font-family: 'Inter', 'Helvetica Neue', 'Arial', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'BIZ UDPGothic', sans-serif;
-        }
-        /* ドラッグ&ドロップエリアのスタイル */
-        .drop-zone {
-            transition: background-color 0.2s ease-in-out;
-        }
-        .drop-zone.drag-over {
-            background-color: #e0f2fe; /* Tailwindのsky-100 */
-            border-color: #0ea5e9; /* Tailwindのsky-500 */
-        }
-        /* ローディングスピナーのスタイル */
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>色の見え方シミュレーター ｜ 色だけに頼らない伝え方</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   色の見え方シミュレーター
+   高等学校 情報Ⅰ 補助教材「情報アクセシビリティをはじめよう」
+   - 外部フレームワーク・外部画像に依存しない（フォント以外はオフラインで動作）
+   - サンプルは「悪い例／良い例」を1枚に並べて描くので、
+     フィルタをかけると"直し方"まで同時に分かる
+   ========================================================= */
+
+:root{
+  --ink:#1e293b; --ink-soft:#475569; --ink-mute:#64748b;
+  --line:#cbd5e1; --line-soft:#e2e8f0;
+  --bg:#f1f5f9; --surface:#fff; --surface-2:#f8fafc;
+
+  --brand:#0369a1; --brand-dark:#075985; --brand-tint:#f0f9ff; --brand-line:#7dd3fc;
+  --ok:#15803d; --ok-tint:#f0fdf4; --ok-line:#86efac;
+  --ng:#b91c1c; --ng-tint:#fef2f2; --ng-line:#fca5a5;
+  --gold:#78350f; --gold-tint:#fffbeb; --gold-line:#fcd34d;
+
+  --r-sm:8px; --r-md:12px; --r-lg:18px; --r-xl:24px;
+  --shadow-1:0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.08);
+  --shadow-2:0 6px 18px rgba(15,23,42,.10);
+  --tap:44px;
+
+  --font:'M PLUS Rounded 1c','Hiragino Maru Gothic ProN','BIZ UDPGothic',
+         'Yu Gothic UI','Hiragino Sans','Noto Sans JP',system-ui,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0; font-family:var(--font); color:var(--ink); background:var(--bg);
+  line-height:1.75; -webkit-tap-highlight-color:transparent;
+}
+button,input{ font:inherit; color:inherit; }
+:focus-visible{ outline:3px solid var(--brand); outline-offset:2px; border-radius:6px; }
+@media (prefers-reduced-motion:reduce){ *{ animation:none!important; transition-duration:.01ms!important; } }
+
+/* ---------- 骨格 ---------- */
+.wrap{
+  max-width:1240px; margin-inline:auto;
+  padding:clamp(12px,2.5vw,26px) clamp(12px,2.5vw,20px) calc(28px + env(safe-area-inset-bottom));
+}
+.pagehead{ text-align:center; margin-bottom:clamp(12px,2vw,18px); }
+.pagehead h1{ margin:0; font-size:clamp(1.4rem,1.1rem+1.4vw,2rem); font-weight:800; color:#334155; }
+.pagehead p{ margin:.4em auto 0; max-width:60ch; color:var(--ink-mute); font-size:clamp(.85rem,.8rem+.2vw,.98rem); }
+
+.caveat{
+  display:flex; gap:12px; align-items:flex-start;
+  padding:12px 16px; margin-bottom:clamp(12px,2vw,18px);
+  background:var(--gold-tint); border:1px solid var(--gold-line);
+  border-radius:var(--r-md); color:var(--gold); font-size:.85rem;
+}
+.caveat .ic{ flex:none; font-size:1.1rem; line-height:1.5; }
+.caveat b{ font-weight:800; }
+
+.card{
+  background:var(--surface); border:1px solid var(--line-soft);
+  border-radius:var(--r-lg); box-shadow:var(--shadow-1);
+  padding:clamp(14px,2vw,20px);
+}
+.card > h2{
+  margin:0 0 4px; font-size:1rem; font-weight:800; color:#334155;
+  display:flex; align-items:center; gap:8px;
+}
+.card > p.lead{ margin:0 0 12px; font-size:.84rem; color:var(--ink-mute); }
+.num{
+  flex:none; display:grid; place-items:center; width:26px; height:26px;
+  border-radius:50%; background:var(--brand); color:#fff; font-size:.82rem; font-weight:800;
+}
+
+/* ---------- 操作バー ---------- */
+.bar{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.bar + .bar{ margin-top:10px; }
+.bar-label{ font-size:.8rem; font-weight:800; color:var(--ink-soft); margin-right:2px; }
+.chip{
+  -webkit-appearance:none; appearance:none;
+  min-height:38px; padding:0 14px; border-radius:999px;
+  border:2px solid var(--line); background:#fff; color:var(--ink-soft);
+  font-size:.82rem; font-weight:800; cursor:pointer; touch-action:manipulation;
+}
+.chip:hover{ border-color:var(--brand-line); }
+.chip[aria-pressed="true"]{ background:var(--brand); border-color:var(--brand); color:#fff; }
+.seg{ display:flex; border:1px solid var(--line); border-radius:999px; overflow:hidden; background:#fff; }
+.seg button{
+  -webkit-appearance:none; appearance:none; border:0; background:transparent;
+  min-height:38px; padding:0 14px; font-size:.82rem; font-weight:800;
+  color:var(--ink-soft); cursor:pointer;
+}
+.seg button+button{ border-left:1px solid var(--line); }
+.seg button[aria-pressed="true"]{ background:var(--brand); color:#fff; }
+
+/* 画像の受け取り */
+.drop{
+  position:relative; overflow:hidden;
+  display:inline-flex; align-items:center; gap:6px;
+}
+.drop input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+.dropzone{
+  margin-top:12px; padding:14px; border-radius:var(--r-md);
+  border:2px dashed var(--line); background:var(--surface-2);
+  font-size:.82rem; color:var(--ink-mute); text-align:center;
+}
+.dropzone.is-over{ border-color:var(--brand); background:var(--brand-tint); color:var(--brand-dark); }
+
+/* ---------- 表示 ---------- */
+.views{ margin-top:clamp(14px,2vw,20px); }
+.grid{ display:grid; gap:clamp(10px,1.4vw,16px); grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); }
+.grid.is-single{ grid-template-columns:minmax(0,1fr); }
+.view{
+  border:1px solid var(--line-soft); border-radius:var(--r-md);
+  background:var(--surface); overflow:hidden; box-shadow:var(--shadow-1);
+}
+.view h3{
+  margin:0; padding:9px 14px; font-size:.86rem; font-weight:800;
+  background:var(--surface-2); border-bottom:1px solid var(--line-soft); color:#334155;
+  display:flex; align-items:baseline; gap:8px;
+}
+.view h3 small{ font-weight:400; font-size:.76rem; color:var(--ink-mute); }
+.view canvas{ display:block; width:100%; height:auto; background:#fff; }
+.view[hidden]{ display:none; }
+
+.status{ margin:10px 0 0; font-size:.82rem; color:var(--ink-mute); }
+
+/* ---------- 解説 ---------- */
+.explain{ margin-top:clamp(14px,2vw,20px); }
+.explain h2{ margin:0 0 10px; font-size:1rem; font-weight:800; color:#334155; }
+.explain dl{ margin:0; display:grid; grid-template-columns:minmax(0,1fr); gap:10px; }
+@media (min-width:700px){ .explain dl{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.explain .item{ padding:12px 14px; border-radius:var(--r-md); background:var(--surface-2); border:1px solid var(--line-soft); }
+.explain dt{ font-size:.9rem; font-weight:800; color:var(--brand-dark); }
+.explain dd{ margin:.2em 0 0; font-size:.84rem; color:var(--ink-soft); }
+.explain .stat{
+  margin-top:12px; padding:12px 14px; border-radius:var(--r-md);
+  background:var(--brand-tint); border:1px solid var(--brand-line);
+  font-size:.86rem; color:#0c4a6e;
+}
+
+.visually-hidden{
+  position:absolute!important; width:1px; height:1px; margin:-1px; padding:0;
+  overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0;
+}
+.credit{ text-align:center; margin:18px 0 0; font-size:.75rem; color:var(--ink-mute); }
+</style>
 </head>
-<body class="bg-slate-50 text-slate-800">
+<body>
 
-    <div class="container mx-auto p-4 md:p-8">
-        <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-slate-900">色覚シミュレーションツール</h1>
-            <p class="mt-2 text-slate-600">画像をアップロードして、色覚の多様性を体験しましょう。</p>
-        </header>
+<div class="wrap">
+  <header class="pagehead">
+    <h1>色の見え方シミュレーター</h1>
+    <p>同じ画面でも、色の感じ方は人によってちがいます。「色だけで伝えた情報」がどうなるか、確かめてみましょう。</p>
+  </header>
 
-        <main>
-            <!-- 画像アップロードセクション -->
-            <div id="upload-section" class="mb-8">
-                <label for="image-loader" id="drop-zone" class="flex flex-col items-center justify-center w-full max-w-2xl mx-auto p-8 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer bg-white hover:bg-slate-100 drop-zone">
-                    <svg class="w-10 h-10 mb-4 text-slate-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
-                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
-                    </svg>
-                    <p class="mb-2 text-sm text-slate-500"><span class="font-semibold">クリックしてファイルを選択</span> または ドラッグ＆ドロップ</p>
-                    <p class="text-xs text-slate-500">PNG, JPG, GIFなど</p>
-                </label>
-                <input id="image-loader" type="file" class="hidden" accept="image/*"/>
-            </div>
+  <p class="caveat">
+    <span class="ic" aria-hidden="true">⚠</span>
+    <span>
+      <b>このシミュレーションは、色覚特性の一例を数式で近似したものです。</b>
+      実際の見え方には個人差があり、ここに表示されるとおりに見えるわけではありません。
+      「色だけに頼ると伝わらないことがある」と気づくためのきっかけとして使ってください。
+    </span>
+  </p>
 
-            <!-- ローディング表示 -->
-            <div id="loading-indicator" class="hidden flex-col items-center justify-center text-center my-12">
-                <div class="loader"></div>
-                <p class="mt-4 text-slate-600">画像を処理中です...</p>
-            </div>
-            
-            <!-- 結果表示セクション -->
-            <div id="result-section" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                <!-- オリジナル画像 -->
-                <div class="bg-white p-4 rounded-lg shadow-md">
-                    <h2 class="text-xl font-semibold mb-3 text-center">オリジナル</h2>
-                    <canvas id="canvas-original" class="w-full h-auto rounded"></canvas>
-                </div>
-                <!-- P型色覚（1型2色覚） -->
-                <div class="bg-white p-4 rounded-lg shadow-md">
-                    <h2 class="text-xl font-semibold mb-3 text-center">P型 (Protanopia)</h2>
-                    <canvas id="canvas-protanopia" class="w-full h-auto rounded"></canvas>
-                </div>
-                <!-- D型色覚（2型2色覚） -->
-                <div class="bg-white p-4 rounded-lg shadow-md">
-                    <h2 class="text-xl font-semibold mb-3 text-center">D型 (Deuteranopia)</h2>
-                    <canvas id="canvas-deuteranopia" class="w-full h-auto rounded"></canvas>
-                </div>
-                <!-- グレースケール -->
-                <div class="bg-white p-4 rounded-lg shadow-md">
-                    <h2 class="text-xl font-semibold mb-3 text-center">グレースケール</h2>
-                    <canvas id="canvas-grayscale" class="w-full h-auto rounded"></canvas>
-                </div>
-            </div>
+  <section class="card" aria-labelledby="h-pick">
+    <h2 id="h-pick"><span class="num" aria-hidden="true">1</span>見くらべる画像を選ぶ</h2>
+    <p class="lead">サンプルは、左が<strong>悪い例（色だけで伝えている）</strong>、右が<strong>良い例（形や文字も添えている）</strong>です。</p>
 
-            <!-- エラーメッセージ表示 -->
-            <div id="error-message" class="hidden text-center my-8 p-4 bg-red-100 text-red-700 rounded-lg">
-                <p>画像の読み込みに失敗しました。別のファイルで再度お試しください。</p>
-            </div>
-        </main>
+    <div class="bar" role="group" aria-label="サンプルの切り替え">
+      <button type="button" class="chip" data-sample="0" aria-pressed="true">グラフの凡例</button>
+      <button type="button" class="chip" data-sample="1" aria-pressed="false">入力フォーム</button>
+      <button type="button" class="chip" data-sample="2" aria-pressed="false">座席表</button>
+      <span class="chip drop">
+        自分の画像を使う
+        <input type="file" id="file" accept="image/*" aria-label="画像ファイルを選ぶ">
+      </span>
     </div>
 
-    <script>
-        const imageLoader = document.getElementById('image-loader');
-        const dropZone = document.getElementById('drop-zone');
-        const resultSection = document.getElementById('result-section');
-        const loadingIndicator = document.getElementById('loading-indicator');
-        const errorMessage = document.getElementById('error-message');
-        
-        const canvases = {
-            original: document.getElementById('canvas-original'),
-            protanopia: document.getElementById('canvas-protanopia'),
-            deuteranopia: document.getElementById('canvas-deuteranopia'),
-            grayscale: document.getElementById('canvas-grayscale'),
-        };
+    <div class="bar">
+      <span class="bar-label">表示</span>
+      <span class="seg" role="group" aria-label="表示の切り替え">
+        <button type="button" id="mode-grid" aria-pressed="true">並べて比較</button>
+        <button type="button" id="mode-one" aria-pressed="false">1枚ずつ大きく</button>
+      </span>
+      <span id="one-picker" class="bar" hidden>
+        <span class="bar-label">見え方</span>
+        <button type="button" class="chip" data-view="original" aria-pressed="true">オリジナル</button>
+        <button type="button" class="chip" data-view="protan" aria-pressed="false">P型</button>
+        <button type="button" class="chip" data-view="deutan" aria-pressed="false">D型</button>
+        <button type="button" class="chip" data-view="tritan" aria-pressed="false">T型</button>
+        <button type="button" class="chip" data-view="gray" aria-pressed="false">白黒</button>
+      </span>
+    </div>
 
-        // ファイル選択イベント
-        imageLoader.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                handleFile(file);
-            }
+    <p class="dropzone" id="dropzone">ここに画像ファイルをドラッグ＆ドロップすることもできます</p>
+    <p class="status" id="status" role="status"></p>
+  </section>
+
+  <div class="views">
+    <div class="grid" id="grid">
+      <div class="view" data-view="original">
+        <h3>オリジナル <small>ふつうに見えたとき</small></h3>
+        <canvas id="cv-original"></canvas>
+      </div>
+      <div class="view" data-view="protan">
+        <h3>P型（1型2色覚） <small>赤を感じにくい</small></h3>
+        <canvas id="cv-protan"></canvas>
+      </div>
+      <div class="view" data-view="deutan">
+        <h3>D型（2型2色覚） <small>緑を感じにくい　※もっとも多い</small></h3>
+        <canvas id="cv-deutan"></canvas>
+      </div>
+      <div class="view" data-view="tritan">
+        <h3>T型（3型2色覚） <small>青を感じにくい　※まれ</small></h3>
+        <canvas id="cv-tritan"></canvas>
+      </div>
+      <div class="view" data-view="gray">
+        <h3>白黒 <small>モノクロ印刷・グレースケール表示</small></h3>
+        <canvas id="cv-gray"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <section class="card explain" aria-labelledby="h-exp">
+    <h2 id="h-exp">じゃあ、どうすればいい？</h2>
+    <dl>
+      <div class="item"><dt>グラフ</dt>
+        <dd>色だけでなく、線の種類（実線・破線・点線）や模様を変える。凡例に頼らず、線のそばに直接ラベルを置くとさらに確実です。</dd></div>
+      <div class="item"><dt>リンク</dt>
+        <dd>文字の色を変えるだけでなく、下線を引く。色が分からなくても「そこがリンク」だと分かります。</dd></div>
+      <div class="item"><dt>必須項目</dt>
+        <dd>赤くするだけでなく「＊」などの記号や「（必須）」の文字を添える。</dd></div>
+      <div class="item"><dt>エラー・状態表示</dt>
+        <dd>赤くするだけでなく、アイコンと「入力内容に誤りがあります」といった文章を出す。</dd></div>
+    </dl>
+    <p class="stat">
+      日本では<b>男性の約20人に1人、女性の約500人に1人</b>が、特定の色を区別しにくい色覚特性を持つと言われています（出典：日本眼科学会）。
+      40人のクラスなら1〜2人という計算です。さらに、資料を白黒で印刷した人や、画面を白黒設定にしている人にも同じことが起こります。
+    </p>
+  </section>
+
+  <p class="credit">高等学校 情報Ⅰ 補助教材「つくって、つたえる、みんなのために」</p>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const status = $('status');
+
+  const W = 1000, H = 560;
+  const MAX = 1400;                     // アップロード画像の作業サイズ上限
+
+  const src = document.createElement('canvas');
+  src.width = W; src.height = H;
+  const sctx = src.getContext('2d', { willReadFrequently: true });
+  const F = getComputedStyle(document.body).fontFamily;
+
+  const txt = (c, size, weight, s, x, y, align) => {
+    sctx.fillStyle = c; sctx.font = `${weight} ${size}px ${F}`;
+    sctx.textAlign = align || 'left'; sctx.textBaseline = 'alphabetic';
+    sctx.fillText(s, x, y);
+  };
+  const rect = (c, x, y, w, h, r) => {
+    sctx.fillStyle = c; sctx.beginPath();
+    if (r && sctx.roundRect) sctx.roundRect(x, y, w, h, r); else sctx.rect(x, y, w, h);
+    sctx.fill();
+  };
+  const line = (c, w, pts, dash) => {
+    sctx.strokeStyle = c; sctx.lineWidth = w; sctx.lineJoin = 'round'; sctx.lineCap = 'round';
+    sctx.setLineDash(dash || []);
+    sctx.beginPath();
+    pts.forEach(([x, y], i) => (i ? sctx.lineTo(x, y) : sctx.moveTo(x, y)));
+    sctx.stroke();
+    sctx.setLineDash([]);
+  };
+
+  /** 左右に「悪い例／良い例」の見出しと仕切りを描く */
+  function frame() {
+    rect('#ffffff', 0, 0, W, H);
+    rect('#fef2f2', 0, 0, W / 2, 46);
+    rect('#f0fdf4', W / 2, 0, W / 2, 46);
+    txt('#7f1d1d', 21, 800, '✕  悪い例：色だけで伝えている', 24, 31);
+    txt('#14532d', 21, 800, '○  良い例：形や文字も添えている', W / 2 + 24, 31);
+    sctx.strokeStyle = '#cbd5e1'; sctx.lineWidth = 2;
+    sctx.setLineDash([8, 6]);
+    sctx.beginPath(); sctx.moveTo(W / 2, 0); sctx.lineTo(W / 2, H); sctx.stroke();
+    sctx.setLineDash([]);
+  }
+
+  const RED = '#e02424', GREEN = '#16a34a', BLUE = '#2563eb';
+
+  /* =========================================================
+     サンプル（Canvasに直接描画。外部ファイル不要）
+     ========================================================= */
+  const SAMPLES = [
+    /* ---------- 0. グラフの凡例 ---------- */
+    () => {
+      frame();
+      const draw = (ox, better) => {
+        txt('#334155', 19, 800, '店舗別 売上の推移', ox + 24, 84);
+        // 軸
+        line('#94a3b8', 2, [[ox + 44, 110], [ox + 44, 430], [ox + 452, 430]]);
+        ['4月', '5月', '6月', '7月', '8月'].forEach((m, i) =>
+          txt('#64748b', 14, 400, m, ox + 76 + i * 92, 452, 'center'));
+        const series = [
+          { name:'A店', color:RED,   dash:[],       mark:'circle', v:[300, 240, 200, 160, 130] },
+          { name:'B店', color:GREEN, dash:[12, 8],  mark:'square', v:[380, 330, 300, 290, 250] },
+          { name:'C店', color:BLUE,  dash:[3, 7],   mark:'tri',    v:[200, 250, 300, 350, 400] },
+        ];
+        series.forEach((s) => {
+          const pts = s.v.map((v, i) => [ox + 76 + i * 92, 110 + (430 - 110) * (1 - (v - 100) / 320)]);
+          line(s.color, 4, pts, better ? s.dash : []);
+          if (better) {
+            pts.forEach(([x, y]) => {
+              sctx.fillStyle = s.color;
+              sctx.beginPath();
+              if (s.mark === 'circle') sctx.arc(x, y, 6, 0, Math.PI * 2);
+              else if (s.mark === 'square') sctx.rect(x - 5.5, y - 5.5, 11, 11);
+              else { sctx.moveTo(x, y - 7); sctx.lineTo(x + 6.5, y + 5); sctx.lineTo(x - 6.5, y + 5); sctx.closePath(); }
+              sctx.fill();
+            });
+            // 線のそばに直接ラベル
+            const [lx, ly] = pts[pts.length - 1];
+            rect('#ffffff', lx + 8, ly - 15, 54, 26, 6);
+            sctx.strokeStyle = s.color; sctx.lineWidth = 2;
+            sctx.beginPath(); sctx.roundRect ? sctx.roundRect(lx + 8, ly - 15, 54, 26, 6) : sctx.rect(lx + 8, ly - 15, 54, 26); sctx.stroke();
+            txt('#1e293b', 15, 800, s.name, lx + 35, ly + 4, 'center');
+          }
         });
-
-        // ドラッグアンドドロップのイベント設定
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            dropZone.classList.add('drag-over');
-        });
-
-        dropZone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            dropZone.classList.remove('drag-over');
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            dropZone.classList.remove('drag-over');
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                handleFile(file);
-            }
-        });
-
-        /**
-         * 選択されたファイルを処理する
-         * @param {File} file ユーザーが選択した画像ファイル
-         */
-        function handleFile(file) {
-            if (!file.type.startsWith('image/')) {
-                showError();
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    processImage(img);
-                };
-                img.onerror = () => {
-                    showError();
-                };
-                img.src = e.target.result;
-            };
-            reader.onerror = () => {
-                showError();
-            };
-            reader.readAsDataURL(file);
-
-            showLoading();
+        // 凡例
+        if (!better) {
+          series.forEach((s, i) => {
+            rect(s.color, ox + 60 + i * 130, 484, 26, 16, 3);
+            txt('#334155', 15, 700, s.name, ox + 94 + i * 130, 498);
+          });
+          txt('#7f1d1d', 14, 700, '「赤がA店、緑がB店、青がC店です」', ox + 60, 528);
+        } else {
+          txt('#14532d', 14, 700, '線の種類・マーカーの形・線のそばのラベルでも区別できる', ox + 44, 500);
         }
+      };
+      draw(0, false);
+      draw(W / 2, true);
+    },
 
-        /**
-         * 画像を処理して各キャンバスに表示する
-         * @param {HTMLImageElement} img 読み込み済みの画像要素
-         */
-        function processImage(img) {
-            // Web Workerを使用してUIのブロッキングを防ぐ
-            if (window.Worker) {
-                const worker = new Worker(URL.createObjectURL(new Blob([`(${workerScript.toString()})()`], { type: 'application/javascript' })));
-                
-                // 元画像の描画
-                const originalCtx = canvases.original.getContext('2d');
-                canvases.original.width = img.width;
-                canvases.original.height = img.height;
-                originalCtx.drawImage(img, 0, 0);
-                
-                const imageData = originalCtx.getImageData(0, 0, img.width, img.height);
-
-                worker.postMessage({ imageData });
-
-                worker.onmessage = (e) => {
-                    const { protanopiaData, deuteranopiaData, grayscaleData } = e.data;
-                    
-                    // P型
-                    drawResult(canvases.protanopia, protanopiaData);
-                    // D型
-                    drawResult(canvases.deuteranopia, deuteranopiaData);
-                    // グレースケール
-                    drawResult(canvases.grayscale, grayscaleData);
-
-                    showResults();
-                    worker.terminate();
-                };
-                 worker.onerror = (e) => {
-                    console.error('Worker error:', e);
-                    showError();
-                    worker.terminate();
-                };
-
+    /* ---------- 1. 入力フォーム ---------- */
+    () => {
+      frame();
+      const draw = (ox, better) => {
+        txt('#334155', 19, 800, '参加申込フォーム', ox + 28, 88);
+        const rows = [
+          ['お名前', true], ['メールアドレス', true], ['学校名', false], ['電話番号', true],
+        ];
+        rows.forEach(([label, need], i) => {
+          const y = 118 + i * 84;
+          if (better) {
+            txt('#1e293b', 16, 700, label, ox + 28, y + 18);
+            if (need) {
+              rect('#fee2e2', ox + 28 + sctx.measureText(label).width + 10, y + 2, 74, 22, 5);
+              txt('#7f1d1d', 14, 800, '＊必須', ox + 28 + sctx.measureText(label).width + 18, y + 19);
             } else {
-                // Web Workerが使えない場合のフォールバック（UIが固まる可能性あり）
-                console.warn("Web Workers are not supported in this browser. Processing on the main thread.");
-                const originalCtx = canvases.original.getContext('2d');
-                canvases.original.width = img.width;
-                canvases.original.height = img.height;
-                originalCtx.drawImage(img, 0, 0);
-
-                const imageData = originalCtx.getImageData(0, 0, img.width, img.height);
-                
-                const protanopiaData = simulateColorVision(imageData, 'protanopia');
-                const deuteranopiaData = simulateColorVision(imageData, 'deuteranopia');
-                const grayscaleData = convertToGrayscale(imageData);
-                
-                drawResult(canvases.protanopia, protanopiaData);
-                drawResult(canvases.deuteranopia, deuteranopiaData);
-                drawResult(canvases.grayscale, grayscaleData);
-
-                showResults();
+              txt('#64748b', 14, 400, '（任意）', ox + 28 + sctx.measureText(label).width + 12, y + 18);
             }
-        }
-        
-        /**
-         * 処理結果をキャンバスに描画する
-         * @param {HTMLCanvasElement} canvas 描画対象のキャンバス
-         * @param {ImageData} imageData 描画するイメージデータ
-         */
-        function drawResult(canvas, imageData) {
-            canvas.width = imageData.width;
-            canvas.height = imageData.height;
-            const ctx = canvas.getContext('2d');
-            ctx.putImageData(imageData, 0, 0);
-        }
+          } else {
+            txt(need ? RED : '#1e293b', 16, 700, label, ox + 28, y + 18);
+          }
+          rect('#ffffff', ox + 28, y + 28, 420, 40, 8);
+          sctx.strokeStyle = (!better && need) ? RED : '#94a3b8';
+          sctx.lineWidth = 2;
+          sctx.beginPath(); sctx.roundRect ? sctx.roundRect(ox + 28, y + 28, 420, 40, 8) : sctx.rect(ox + 28, y + 28, 420, 40); sctx.stroke();
+        });
+        if (!better) txt('#7f1d1d', 14, 700, '「赤い項目は必ず入力してください」', ox + 28, 476);
+        else         txt('#14532d', 14, 700, '「＊必須」の文字があれば、色が分からなくても伝わる', ox + 28, 476);
+        rect(better ? '#0369a1' : '#0369a1', ox + 28, 496, 160, 44, 22);
+        txt('#ffffff', 16, 800, '送信する', ox + 108, 524, 'center');
+      };
+      draw(0, false);
+      draw(W / 2, true);
+    },
 
-        // UI表示制御
-        function showLoading() {
-            resultSection.classList.add('hidden');
-            errorMessage.classList.add('hidden');
-            loadingIndicator.classList.remove('hidden');
-            loadingIndicator.classList.add('flex');
-        }
-
-        function showResults() {
-            loadingIndicator.classList.add('hidden');
-            loadingIndicator.classList.remove('flex');
-            errorMessage.classList.add('hidden');
-            resultSection.classList.remove('hidden');
-        }
-
-        function showError() {
-            loadingIndicator.classList.add('hidden');
-            loadingIndicator.classList.remove('flex');
-            resultSection.classList.add('hidden');
-            errorMessage.classList.remove('hidden');
-        }
-
-
-        /**
-         * Web Worker内で実行される画像処理スクリプト
-         */
-        function workerScript() {
-            self.onmessage = function(e) {
-                const { imageData } = e.data;
-                const protanopiaData = simulateColorVision(imageData, 'protanopia');
-                const deuteranopiaData = simulateColorVision(imageData, 'deuteranopia');
-                const grayscaleData = convertToGrayscale(imageData);
-                
-                // メインスレッドに結果を返す
-                self.postMessage({ protanopiaData, deuteranopiaData, grayscaleData });
-            };
-
-            /**
-             * 色覚シミュレーションを行う（P型/D型）
-             * @param {ImageData} imageData 元の画像のImageData
-             * @param {string} type 'protanopia' または 'deuteranopia'
-             * @returns {ImageData} 変換後のImageData
-             */
-            function simulateColorVision(originalImageData, type) {
-                // このシミュレーションは、LMS色空間への変換に基づいています。
-                // 参考文献: Viénot, F., Brettel, H., & Mollon, J. D. (1999)
-                const data = new Uint8ClampedArray(originalImageData.data);
-                const width = originalImageData.width;
-                const height = originalImageData.height;
-                const newImageData = new ImageData(width, height);
-                const newData = newImageData.data;
-
-                // 変換行列
-                const lmsMatrix = [
-                    [17.8824, 43.5161, 4.11935],
-                    [3.45565, 27.1554, 3.86714],
-                    [0.02996, 0.184309, 1.46709]
-                ];
-                
-                const lmsToRgbMatrix = [
-                    [0.0808, -0.1305, 0.1167],
-                    [-0.0102, 0.0540, -0.1136],
-                    [-0.0003, -0.0041, 0.6935]
-                ];
-
-                let simMatrix;
-                if (type === 'protanopia') {
-                    simMatrix = [
-                        [0, 2.02344, -2.52581],
-                        [0, 1, 0],
-                        [0, 0, 1]
-                    ];
-                } else { // deuteranopia
-                    simMatrix = [
-                        [1, 0, 0],
-                        [0.494207, 0, 1.24827],
-                        [0, 0, 1]
-                    ];
+    /* ---------- 2. 座席表 ---------- */
+    () => {
+      frame();
+      const draw = (ox, better) => {
+        txt('#334155', 19, 800, '文化祭ステージ 座席表', ox + 28, 88);
+        // 座席は白文字を載せるので、コントラストが取れる濃さにする
+        const zones = [
+          { c:'#b3261e', name:'A席', pat:'solid' },
+          { c:'#15803d', name:'B席', pat:'stripe' },
+          { c:'#1d4ed8', name:'C席', pat:'dot' },
+        ];
+        for (let r = 0; r < 6; r++) {
+          for (let c = 0; c < 8; c++) {
+            const z = zones[r < 2 ? 0 : r < 4 ? 1 : 2];
+            const x = ox + 34 + c * 54, y = 110 + r * 50;
+            rect(z.c, x, y, 44, 40, 6);
+            if (better) {
+              // 模様
+              sctx.save();
+              sctx.beginPath();
+              sctx.roundRect ? sctx.roundRect(x, y, 44, 40, 6) : sctx.rect(x, y, 44, 40);
+              sctx.clip();
+              sctx.strokeStyle = 'rgba(255,255,255,.75)'; sctx.lineWidth = 3;
+              if (z.pat === 'stripe') {
+                for (let k = -40; k < 60; k += 12) { sctx.beginPath(); sctx.moveTo(x + k, y + 44); sctx.lineTo(x + k + 44, y); sctx.stroke(); }
+              } else if (z.pat === 'dot') {
+                sctx.fillStyle = 'rgba(255,255,255,.75)';
+                for (let a = 6; a < 44; a += 14) for (let b = 6; b < 40; b += 14) {
+                  sctx.beginPath(); sctx.arc(x + a, y + b, 3, 0, Math.PI * 2); sctx.fill();
                 }
-
-                for (let i = 0; i < data.length; i += 4) {
-                    let r = data[i];
-                    let g = data[i + 1];
-                    let b = data[i + 2];
-
-                    // ガンマ補正を解除 (sRGB -> linear RGB)
-                    r = (r <= 10.468) ? r / 3294.6 : Math.pow((r / 269.025) + 0.05213, 2.4);
-                    g = (g <= 10.468) ? g / 3294.6 : Math.pow((g / 269.025) + 0.05213, 2.4);
-                    b = (b <= 10.468) ? b / 3294.6 : Math.pow((b / 269.025) + 0.05213, 2.4);
-
-                    // linear RGB -> LMS
-                    const l = r * lmsMatrix[0][0] + g * lmsMatrix[0][1] + b * lmsMatrix[0][2];
-                    const m = r * lmsMatrix[1][0] + g * lmsMatrix[1][1] + b * lmsMatrix[1][2];
-                    const s = r * lmsMatrix[2][0] + g * lmsMatrix[2][1] + b * lmsMatrix[2][2];
-
-                    // LMSシミュレーション
-                    const l_sim = l * simMatrix[0][0] + m * simMatrix[0][1] + s * simMatrix[0][2];
-                    const m_sim = l * simMatrix[1][0] + m * simMatrix[1][1] + s * simMatrix[1][2];
-                    const s_sim = l * simMatrix[2][0] + m * simMatrix[2][1] + s * simMatrix[2][2];
-
-                    // LMS -> linear RGB
-                    let r_sim = l_sim * lmsToRgbMatrix[0][0] + m_sim * lmsToRgbMatrix[0][1] + s_sim * lmsToRgbMatrix[0][2];
-                    let g_sim = l_sim * lmsToRgbMatrix[1][0] + m_sim * lmsToRgbMatrix[1][1] + s_sim * lmsToRgbMatrix[1][2];
-                    let b_sim = l_sim * lmsToRgbMatrix[2][0] + m_sim * lmsToRgbMatrix[2][1] + s_sim * lmsToRgbMatrix[2][2];
-
-                    // ガンマ補正 (linear RGB -> sRGB)
-                    r_sim = (r_sim <= 0.0031308) ? r_sim * 12.92 : 1.055 * Math.pow(r_sim, 1/2.4) - 0.055;
-                    g_sim = (g_sim <= 0.0031308) ? g_sim * 12.92 : 1.055 * Math.pow(g_sim, 1/2.4) - 0.055;
-                    b_sim = (b_sim <= 0.0031308) ? b_sim * 12.92 : 1.055 * Math.pow(b_sim, 1/2.4) - 0.055;
-                    
-                    // 0-255の範囲にクリッピング
-                    newData[i] = Math.max(0, Math.min(255, r_sim * 255));
-                    newData[i + 1] = Math.max(0, Math.min(255, g_sim * 255));
-                    newData[i + 2] = Math.max(0, Math.min(255, b_sim * 255));
-                    newData[i + 3] = data[i + 3]; // Alpha値はそのまま
-                }
-                return newImageData;
+              }
+              sctx.restore();
+              // 席の記号
+              txt('#ffffff', 15, 800, `${z.name[0]}${r * 8 + c + 1}`, x + 22, y + 26, 'center');
             }
-
-            /**
-             * グレースケールに変換する
-             * @param {ImageData} imageData 元の画像のImageData
-             * @returns {ImageData} 変換後のImageData
-             */
-            function convertToGrayscale(originalImageData) {
-                const data = new Uint8ClampedArray(originalImageData.data);
-                const width = originalImageData.width;
-                const height = originalImageData.height;
-                const newImageData = new ImageData(width, height);
-                const newData = newImageData.data;
-
-                for (let i = 0; i < data.length; i += 4) {
-                    const r = data[i];
-                    const g = data[i + 1];
-                    const b = data[i + 2];
-                    // 輝度を計算 (Luminosity method)
-                    const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-                    newData[i] = gray;
-                    newData[i + 1] = gray;
-                    newData[i + 2] = gray;
-                    newData[i + 3] = data[i + 3]; // Alpha値はそのまま
-                }
-                return newImageData;
-            }
+          }
         }
-    </script>
+        if (!better) {
+          zones.forEach((z, i) => {
+            rect(z.c, ox + 40 + i * 130, 428, 26, 20, 4);
+            txt('#334155', 15, 700, z.name, ox + 74 + i * 130, 445);
+          });
+          txt('#7f1d1d', 14, 700, '「あなたの席は緑のエリアです」', ox + 40, 486);
+        } else {
+          txt('#14532d', 14, 700, '模様と席番号があれば「B17」と伝えられる', ox + 34, 445);
+        }
+        rect('#334155', ox + 130, 500, 240, 34, 8);
+        txt('#ffffff', 16, 800, 'ステージ', ox + 250, 523, 'center');
+      };
+      draw(0, false);
+      draw(W / 2, true);
+    },
+  ];
+
+  /* =========================================================
+     色覚シミュレーション（Viénot, Brettel & Mollon 1999 に基づく）
+     ========================================================= */
+  const LMS = [
+    [17.8824,   43.5161,  4.11935],
+    [ 3.45565,  27.1554,  3.86714],
+    [ 0.0299566, 0.184309, 1.46709],
+  ];
+  const LMS2RGB = [
+    [ 0.080944, -0.130504,  0.116721],
+    [-0.010248,  0.054019, -0.113614],
+    [-0.000365, -0.004120,  0.693513],
+  ];
+  const SIM = {
+    protan: [[0, 2.02344, -2.52581], [0, 1, 0], [0, 0, 1]],
+    deutan: [[1, 0, 0], [0.494207, 0, 1.24827], [0, 0, 1]],
+    tritan: [[1, 0, 0], [0, 1, 0], [-0.395913, 0.801109, 0]],
+  };
+
+  // sRGB ⇔ 線形RGB の変換表（8bit分を先に計算しておく）
+  const TO_LIN = new Float32Array(256);
+  for (let i = 0; i < 256; i++) {
+    const c = i / 255;
+    TO_LIN[i] = c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  }
+  const toSrgb = (v) => {
+    v = v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(Math.max(v, 0), 1 / 2.4) - 0.055;
+    return v <= 0 ? 0 : v >= 1 ? 255 : v * 255;
+  };
+
+  function simulate(imgData, type) {
+    const s = imgData.data;
+    const out = new ImageData(imgData.width, imgData.height);
+    const d = out.data;
+    const M = SIM[type];
+
+    for (let i = 0; i < s.length; i += 4) {
+      const r = TO_LIN[s[i]], g = TO_LIN[s[i + 1]], b = TO_LIN[s[i + 2]];
+
+      const l = r * LMS[0][0] + g * LMS[0][1] + b * LMS[0][2];
+      const m = r * LMS[1][0] + g * LMS[1][1] + b * LMS[1][2];
+      const q = r * LMS[2][0] + g * LMS[2][1] + b * LMS[2][2];
+
+      const l2 = l * M[0][0] + m * M[0][1] + q * M[0][2];
+      const m2 = l * M[1][0] + m * M[1][1] + q * M[1][2];
+      const q2 = l * M[2][0] + m * M[2][1] + q * M[2][2];
+
+      d[i]     = toSrgb(l2 * LMS2RGB[0][0] + m2 * LMS2RGB[0][1] + q2 * LMS2RGB[0][2]);
+      d[i + 1] = toSrgb(l2 * LMS2RGB[1][0] + m2 * LMS2RGB[1][1] + q2 * LMS2RGB[1][2]);
+      d[i + 2] = toSrgb(l2 * LMS2RGB[2][0] + m2 * LMS2RGB[2][1] + q2 * LMS2RGB[2][2]);
+      d[i + 3] = s[i + 3];
+    }
+    return out;
+  }
+
+  /** 明るさ（相対輝度）だけを残す＝白黒印刷に近い見え方 */
+  function grayscale(imgData) {
+    const s = imgData.data;
+    const out = new ImageData(imgData.width, imgData.height);
+    const d = out.data;
+    for (let i = 0; i < s.length; i += 4) {
+      const y = toSrgb(0.2126 * TO_LIN[s[i]] + 0.7152 * TO_LIN[s[i + 1]] + 0.0722 * TO_LIN[s[i + 2]]);
+      d[i] = d[i + 1] = d[i + 2] = y;
+      d[i + 3] = s[i + 3];
+    }
+    return out;
+  }
+
+  /* =========================================================
+     描画
+     ========================================================= */
+  const VIEWS = ['original', 'protan', 'deutan', 'tritan', 'gray'];
+  const cv = Object.fromEntries(VIEWS.map((v) => [v, $(`cv-${v}`)]));
+
+  function render() {
+    const t0 = performance.now();
+    const w = src.width, h = src.height;
+    const base = sctx.getImageData(0, 0, w, h);
+
+    VIEWS.forEach((v) => {
+      const c = cv[v];
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      if (v === 'original') ctx.putImageData(base, 0, 0);
+      else if (v === 'gray') ctx.putImageData(grayscale(base), 0, 0);
+      else ctx.putImageData(simulate(base, v), 0, 0);
+    });
+
+    status.textContent = `${w} × ${h} ピクセルを処理しました（${Math.round(performance.now() - t0)} ミリ秒）`;
+  }
+
+  function loadSample(i) {
+    src.width = W; src.height = H;
+    sctx.setTransform(1, 0, 0, 1, 0, 0);
+    sctx.clearRect(0, 0, W, H);
+    SAMPLES[i]();
+    render();
+  }
+
+  function loadImage(img) {
+    const s = Math.min(1, MAX / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * s));
+    const h = Math.max(1, Math.round(img.height * s));
+    src.width = w; src.height = h;
+    sctx.setTransform(1, 0, 0, 1, 0, 0);
+    sctx.clearRect(0, 0, w, h);
+    sctx.drawImage(img, 0, 0, w, h);
+    render();
+  }
+
+  /* =========================================================
+     入力
+     ========================================================= */
+  const chips = [...document.querySelectorAll('.chip[data-sample]')];
+  chips.forEach((c) => c.addEventListener('click', () => {
+    chips.forEach((x) => x.setAttribute('aria-pressed', String(x === c)));
+    loadSample(Number(c.dataset.sample));
+  }));
+
+  function handleFile(file) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      status.textContent = '画像ファイルを選んでください。';
+      return;
+    }
+    status.textContent = '読み込んでいます…';
+    const fr = new FileReader();
+    fr.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        chips.forEach((x) => x.setAttribute('aria-pressed', 'false'));
+        loadImage(img);
+      };
+      img.onerror = () => { status.textContent = 'この画像は読み込めませんでした。別のファイルで試してください。'; };
+      img.src = ev.target.result;
+    };
+    fr.onerror = () => { status.textContent = 'ファイルを読み込めませんでした。'; };
+    fr.readAsDataURL(file);   // データURLなのでCanvasが汚染されない
+  }
+
+  $('file').addEventListener('change', (e) => handleFile(e.target.files && e.target.files[0]));
+
+  const dz = $('dropzone');
+  ['dragenter', 'dragover'].forEach((t) => dz.addEventListener(t, (e) => {
+    e.preventDefault(); dz.classList.add('is-over');
+  }));
+  ['dragleave', 'dragend'].forEach((t) => dz.addEventListener(t, () => dz.classList.remove('is-over')));
+  dz.addEventListener('drop', (e) => {
+    e.preventDefault(); dz.classList.remove('is-over');
+    handleFile(e.dataTransfer.files && e.dataTransfer.files[0]);
+  });
+  // ページ全体にドロップしても誤って画像が開かれないように
+  ['dragover', 'drop'].forEach((t) => document.addEventListener(t, (e) => {
+    if (!e.target.closest('#dropzone')) e.preventDefault();
+  }));
+
+  /* 表示モード */
+  let single = false, one = 'original';
+  const applyMode = () => {
+    $('grid').classList.toggle('is-single', single);
+    $('one-picker').hidden = !single;
+    VIEWS.forEach((v) => {
+      document.querySelector(`.view[data-view="${v}"]`).hidden = single && v !== one;
+    });
+  };
+  $('mode-grid').addEventListener('click', () => {
+    single = false;
+    $('mode-grid').setAttribute('aria-pressed', 'true');
+    $('mode-one').setAttribute('aria-pressed', 'false');
+    applyMode();
+  });
+  $('mode-one').addEventListener('click', () => {
+    single = true;
+    $('mode-grid').setAttribute('aria-pressed', 'false');
+    $('mode-one').setAttribute('aria-pressed', 'true');
+    applyMode();
+  });
+  document.querySelectorAll('.chip[data-view]').forEach((b) => b.addEventListener('click', () => {
+    one = b.dataset.view;
+    document.querySelectorAll('.chip[data-view]').forEach((x) =>
+      x.setAttribute('aria-pressed', String(x === b)));
+    applyMode();
+  }));
+
+  /* =========================================================
+     起動
+     ========================================================= */
+  loadSample(0);
+  applyMode();
+})();
+</script>
+
 </body>
 </html>
