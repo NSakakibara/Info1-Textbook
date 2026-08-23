@@ -1,359 +1,869 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ウェブアクセシビリティ 音声読み上げデモ</title>
-    <style>
-        /* === 全体のスタイル === */
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 900px;
-            margin: 20px auto;
-            padding: 0 15px;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>スクリーンリーダー読み上げデモ ｜ 構造化された文章と表</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   スクリーンリーダー読み上げデモ
+   高等学校 情報Ⅰ 補助教材「情報アクセシビリティをはじめよう」
+   - 外部フレームワーク非依存（フォント以外はオフラインで動作）
+   - 読み上げ内容は必ず画面にも字幕として表示する
+   ========================================================= */
 
-        h1, h2, h3 {
-            border-bottom: 2px solid #007bff;
-            padding-bottom: 5px;
-        }
-        
-        h1 { font-size: 2em; }
-        h2 { font-size: 1.75em; margin-top: 2em; }
-        h3 { font-size: 1.25em; border-bottom-style: dotted; }
+:root{
+  --ink:#1e293b; --ink-soft:#475569; --ink-mute:#64748b;
+  --line:#cbd5e1; --line-soft:#e2e8f0;
+  --bg:#f1f5f9; --surface:#fff; --surface-2:#f8fafc;
 
-        .container {
-            display: flex;
-            flex-wrap: wrap; /* 画面が狭いときに折り返す */
-            gap: 2em;
-        }
+  --brand:#0369a1; --brand-dark:#075985; --brand-tint:#f0f9ff; --brand-line:#7dd3fc;
+  --ok:#15803d; --ok-tint:#f0fdf4; --ok-line:#86efac;
+  --ng:#b91c1c; --ng-tint:#fef2f2; --ng-line:#fca5a5;
+  --mark:#fde68a; --mark-line:#f59e0b;
 
-        .demo-section {
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            padding: 1em;
-            flex: 1; /* フレックスアイテムとして均等に広がる */
-            min-width: 300px; /* 最小幅を指定 */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
+  --r-sm:8px; --r-md:12px; --r-lg:18px; --r-xl:24px;
+  --shadow-1:0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.08);
+  --shadow-2:0 4px 12px rgba(15,23,42,.10);
+  --shadow-3:0 -6px 24px rgba(15,23,42,.14);
+  --tap:44px;
+  --cc-h:0px;               /* 字幕バーの高さ（JSで設定） */
 
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-right: 10px;
-            margin-top: 10px;
-            transition: background-color 0.2s;
-        }
+  --font:'M PLUS Rounded 1c','Hiragino Maru Gothic ProN','BIZ UDPGothic',
+         'Yu Gothic UI','Hiragino Sans','Noto Sans JP',system-ui,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
 
-        button:hover {
-            background-color: #0056b3;
-        }
+*,*::before,*::after{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0; font-family:var(--font); color:var(--ink); background:var(--bg);
+  line-height:1.75; -webkit-tap-highlight-color:transparent;
+}
+button,select{ font:inherit; color:inherit; }
+:focus-visible{ outline:3px solid var(--brand); outline-offset:2px; border-radius:4px; }
+@media (prefers-reduced-motion:reduce){ *{ animation-duration:.01ms!important; transition-duration:.01ms!important; } }
 
-        hr {
-            margin: 2em 0;
-            border: none;
-            border-top: 1px solid #eee;
-        }
-        
-        /* === デモ固有のスタイル === */
-        .bad-h1 { font-size: 2em; font-weight: bold; margin: 0.67em 0; }
-        .bad-h2 { font-size: 1.5em; font-weight: bold; margin: 0.83em 0; }
+/* ---------- ページ ---------- */
+.page{
+  max-width:1200px; margin-inline:auto;
+  padding:clamp(12px,2vw,24px);
+  padding-bottom:calc(var(--cc-h) + env(safe-area-inset-bottom) + 24px);
+}
+.pagehead{ text-align:center; margin:4px 0 clamp(14px,2vw,22px); }
+.pagehead h1{
+  margin:0; font-weight:800; color:#334155;
+  font-size:clamp(1.4rem,1.05rem+1.5vw,2.1rem);
+}
+.pagehead p{ margin:.4em auto 0; max-width:60ch; color:var(--ink-mute); font-size:clamp(.85rem,.8rem+.25vw,1rem); }
 
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            margin-top: 1em;
-        }
+/* ---------- 操作バー ---------- */
+.toolbar{
+  position:sticky; top:0; z-index:30;
+  display:flex; flex-wrap:wrap; align-items:center; gap:10px;
+  padding:10px clamp(10px,1.5vw,16px);
+  margin-bottom:clamp(14px,2vw,22px);
+  background:rgba(255,255,255,.94);
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+  border:1px solid var(--line-soft); border-radius:var(--r-lg);
+  box-shadow:var(--shadow-1);
+}
+.toolbar-label{ font-size:.82rem; font-weight:800; color:var(--ink-soft); }
+.seg{ display:flex; border:1px solid var(--line); border-radius:999px; overflow:hidden; background:#fff; }
+.seg button{
+  -webkit-appearance:none; appearance:none; border:0; background:transparent;
+  min-height:38px; padding:0 14px; font-size:.85rem; font-weight:700;
+  color:var(--ink-soft); cursor:pointer;
+}
+.seg button+button{ border-left:1px solid var(--line); }
+.seg button[aria-pressed="true"]{ background:var(--brand); color:#fff; }
+.spacer{ flex:1 1 auto; }
+.voice-warn{
+  flex:1 1 100%; margin:0; padding:8px 12px; border-radius:var(--r-md);
+  background:#fffbeb; border:1px solid #fcd34d; color:#78350f;
+  font-size:.82rem; font-weight:700;
+}
+.voice-warn[hidden]{ display:none; }
+.btn{
+  -webkit-appearance:none; appearance:none;
+  min-height:var(--tap); padding:8px 20px; border-radius:999px;
+  border:2px solid transparent; font-weight:800; cursor:pointer;
+  box-shadow:var(--shadow-1); transition:background-color .12s ease, transform .12s ease;
+}
+.btn:active{ transform:scale(.98); }
+.btn-primary{ background:var(--brand); color:#fff; }
+.btn-primary:hover{ background:var(--brand-dark); }
+.btn-ghost{ background:#fff; color:var(--ink-soft); border-color:var(--line); }
+.btn-ghost:hover{ background:#f1f5f9; }
+.btn-stop{ background:#fff; color:var(--ng); border-color:var(--ng-line); }
+.btn-stop:hover{ background:var(--ng-tint); }
+.btn[disabled]{ opacity:.45; cursor:default; transform:none; }
 
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
+/* ---------- セクション ---------- */
+.demo{ margin-bottom:clamp(22px,3vw,38px); }
+.demo > h2{
+  margin:0 0 4px; font-size:clamp(1.15rem,1.05rem+.5vw,1.5rem); font-weight:800; color:#334155;
+  display:flex; align-items:center; gap:10px;
+}
+.demo-num{
+  flex:none; display:grid; place-items:center;
+  width:32px; height:32px; border-radius:50%;
+  background:var(--brand); color:#fff; font-size:.95rem; font-weight:800;
+}
+.demo > p.lead{ margin:0 0 14px; color:var(--ink-soft); font-size:.95rem; }
 
-        thead {
-            background-color: #f2f2f2;
-        }
+.pair{ display:grid; grid-template-columns:minmax(0,1fr); gap:clamp(12px,1.6vw,20px); }
+@media (min-width:900px){ .pair{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
 
-        /* 読み上げ中の要素をハイライトするスタイル */
-        .highlight-reading {
-            background-color: #ffc107; /* 黄色 */
-            color: black;
-            border-radius: 3px;
-            transition: background-color 0.1s ease-in-out;
-        }
-    </style>
+.panel{
+  background:var(--surface); border:1px solid var(--line-soft);
+  border-radius:var(--r-lg); box-shadow:var(--shadow-1);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.panel-head{ padding:12px 16px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.panel-head h3{ margin:0; font-size:1rem; font-weight:800; }
+.badge{
+  flex:none; font-size:.72rem; font-weight:800; padding:2px 10px; border-radius:999px;
+}
+.panel[data-kind="ng"] .panel-head{ background:var(--ng-tint); border-bottom:1px solid var(--ng-line); }
+.panel[data-kind="ng"] .badge{ background:var(--ng); color:#fff; }
+.panel[data-kind="ng"] h3{ color:#7f1d1d; }
+.panel[data-kind="ok"] .panel-head{ background:var(--ok-tint); border-bottom:1px solid var(--ok-line); }
+.panel[data-kind="ok"] .badge{ background:var(--ok); color:#fff; }
+.panel[data-kind="ok"] h3{ color:#14532d; }
+
+.panel-body{ padding:clamp(12px,1.6vw,18px); flex:1; }
+.panel-foot{
+  padding:0 clamp(12px,1.6vw,18px) clamp(12px,1.6vw,18px);
+  display:flex; flex-wrap:wrap; gap:8px;
+}
+.panel-note{
+  margin:12px clamp(12px,1.6vw,18px) clamp(12px,1.6vw,18px);
+  padding:10px 12px; border-radius:var(--r-md);
+  background:var(--surface-2); border:1px solid var(--line-soft);
+  font-size:.84rem; color:var(--ink-soft);
+}
+.btn-run{
+  -webkit-appearance:none; appearance:none;
+  min-height:var(--tap); padding:8px 16px;
+  border:2px solid var(--brand-line); border-radius:999px;
+  background:var(--brand-tint); color:var(--brand-dark);
+  font-size:.88rem; font-weight:800; cursor:pointer;
+}
+.btn-run:hover{ background:#e0f2fe; }
+.btn-run[aria-pressed="true"]{ background:var(--brand); border-color:var(--brand); color:#fff; }
+
+/* ---------- 疑似文書 ---------- */
+.doc{
+  border:1px solid var(--line-soft); border-radius:var(--r-md);
+  background:var(--surface-2); padding:10px;
+  display:flex; flex-direction:column; gap:4px;
+}
+.line{
+  -webkit-appearance:none; appearance:none;
+  display:block; width:100%; text-align:left;
+  background:#fff; border:1px solid transparent; border-radius:var(--r-sm);
+  padding:8px 10px; cursor:pointer;
+  touch-action:manipulation;
+  transition:background-color .15s ease, border-color .15s ease;
+}
+.line:hover{ border-color:var(--brand-line); }
+.line-tag{
+  display:inline-block; margin-bottom:2px; padding:0 7px; border-radius:999px;
+  font-family:var(--mono); font-size:.68rem; font-weight:700;
+  background:var(--line-soft); color:#334155;
+}
+.line[data-role="heading"] .line-tag{ background:#ede9fe; color:#5b21b6; }
+.line-text{ display:block; }
+.line[data-visual="h1"] .line-text{ font-size:clamp(1.35rem,1.2rem+.6vw,1.7rem); font-weight:800; line-height:1.4; }
+.line[data-visual="h2"] .line-text{ font-size:clamp(1.1rem,1.02rem+.4vw,1.3rem); font-weight:700; line-height:1.45; }
+.line[data-visual="p"]  .line-text{ font-size:.95rem; }
+
+/* ---------- 表 ---------- */
+.tablewrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.tbl{ border-collapse:collapse; width:100%; min-width:320px; }
+.tbl caption{
+  caption-side:top; text-align:left; font-weight:800; color:#334155;
+  padding:0 0 6px; font-size:.92rem;
+}
+.tbl th,.tbl td{
+  border:1px solid var(--line); padding:0;
+  text-align:left; vertical-align:middle;
+}
+.tbl thead th,.tbl tbody th{ background:#eef2f7; font-weight:800; }
+.cell{
+  -webkit-appearance:none; appearance:none;
+  display:block; width:100%; min-height:46px;
+  background:transparent; border:0; border-radius:0;
+  padding:10px 12px; text-align:left; font-weight:inherit;
+  cursor:pointer; touch-action:manipulation;
+  transition:background-color .15s ease;
+}
+.cell:hover{ background:var(--brand-tint); }
+
+/* 読み上げ中のハイライト */
+.is-reading{
+  background:var(--mark)!important;
+  box-shadow:inset 0 0 0 2px var(--mark-line);
+  border-radius:var(--r-sm);
+}
+tr.is-reading{ box-shadow:none; outline:2px solid var(--mark-line); outline-offset:-2px; }
+tr.is-reading > *{ background:var(--mark)!important; }
+table.is-reading{ outline:3px solid var(--mark-line); outline-offset:2px; }
+
+/* ---------- HTMLソース ---------- */
+.src{ margin-top:12px; }
+.src summary{
+  cursor:pointer; font-size:.82rem; font-weight:800; color:var(--brand-dark);
+  padding:6px 0; min-height:32px;
+}
+.src pre{
+  margin:6px 0 0; padding:12px; overflow-x:auto;
+  background:#0f172a; color:#e2e8f0; border-radius:var(--r-md);
+  font-family:var(--mono); font-size:.78rem; line-height:1.6;
+}
+.src .t{ color:#7dd3fc; } .src .a{ color:#fcd34d; } .src .c{ color:#94a3b8; }
+
+/* ---------- 字幕バー ---------- */
+.cc{
+  position:fixed; left:0; right:0; bottom:0; z-index:50;
+  background:#0f172a; color:#f8fafc;
+  box-shadow:var(--shadow-3);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.cc-main{
+  display:flex; align-items:center; gap:12px;
+  padding:10px clamp(12px,2vw,20px);
+  max-width:1200px; margin-inline:auto;
+}
+.cc-label{
+  flex:none; font-size:.68rem; font-weight:800; letter-spacing:.08em;
+  background:#334155; color:#e2e8f0; border-radius:999px; padding:2px 10px;
+}
+.cc-text{
+  flex:1; min-width:0;
+  font-size:clamp(1rem,.9rem+.6vw,1.5rem); font-weight:700; line-height:1.4;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.cc-text:empty::before{ content:"読み上げボタンを押すと、ここに読み上げ内容が表示されます"; color:#94a3b8; font-weight:400; font-size:.9rem; }
+.cc-toggle{
+  flex:none; -webkit-appearance:none; appearance:none;
+  min-height:38px; padding:0 14px; border-radius:999px;
+  border:1px solid #475569; background:#1e293b; color:#e2e8f0;
+  font-size:.8rem; font-weight:700; cursor:pointer;
+}
+.cc-toggle:hover{ background:#334155; }
+.cc-log{
+  display:none;
+  max-width:1200px; margin-inline:auto;
+  padding:0 clamp(12px,2vw,20px) 12px;
+  max-height:34vh; overflow-y:auto; overscroll-behavior:contain;
+}
+.cc[data-open="true"] .cc-log{ display:block; }
+.cc-log ol{ margin:0; padding:0; list-style:none; counter-reset:cc; }
+.cc-log li{
+  position:relative; padding:3px 0 3px 2.4em;
+  font-size:.88rem; color:#cbd5e1; border-top:1px solid #1e293b;
+}
+.cc-log li:first-child{ border-top:0; }
+.cc-log li:not(.grp){ counter-increment:cc; }
+.cc-log li:not(.grp)::before{
+  content:counter(cc) "."; position:absolute; left:0; width:2em;
+  text-align:right; color:#64748b; font-variant-numeric:tabular-nums;
+}
+.cc-log .grp{
+  padding:12px 0 2px; border-top:0;
+  font-size:.72rem; font-weight:800; letter-spacing:.06em; color:#7dd3fc;
+}
+
+/* ---------- 注記 ---------- */
+.caveat{
+  margin:clamp(18px,3vw,28px) 0 0;
+  padding:14px 16px; border-radius:var(--r-md);
+  background:#fffbeb; border:1px solid #fcd34d; color:#78350f;
+  font-size:.85rem;
+}
+.caveat strong{ color:#78350f; }
+.visually-hidden{
+  position:absolute!important; width:1px; height:1px; margin:-1px; padding:0;
+  overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0;
+}
+</style>
 </head>
 <body>
 
-    <h1>ウェブアクセシビリティ：音声読み上げデモ</h1>
-    <p>スクリーンリーダーがどのようにページを読み上げるのか体験してみましょう。各セクションのボタンを押して、元の文章が直接ハイライトされる様子を確認してください。</p>
+<div class="page">
 
-    <hr>
+  <header class="pagehead">
+    <h1>スクリーンリーダーは、こう読み上げる</h1>
+    <p>同じ見た目でも、HTMLの「構造」が違うと読み上げはまったく変わります。ボタンを押して、耳と目で確かめてみましょう。</p>
+  </header>
 
-    <h2>デモ1：見出しの拾い読み</h2>
-    <div class="container">
-        <!-- 悪い例 -->
-        <div class="demo-section">
-            <h3>悪い例：見た目だけの見出し</h3>
-            <div id="bad-headings-content">
-                <div class="bad-h1">自己紹介</div>
-                <p>私の名前は山田です。趣味は読書です。週末はよく図書館に行きます。</p>
-                <div class="bad-h2">好きな本</div>
-                <p>特にミステリー小説が好きで、国内外の様々な作品を読んでいます。</p>
-            </div>
-            <button onclick="readBadHeadings()">この内容を読み上げる</button>
-            <button onclick="jumpBadHeadings()">見出しだけ拾い読み（失敗例）</button>
-        </div>
-
-        <!-- 良い例 -->
-        <div class="demo-section">
-            <h3>良い例：hタグを使った見出し</h3>
-            <div id="good-headings-content">
-                <h1>自己紹介</h1>
-                <p>私の名前は佐藤です。趣味はスポーツです。週末はよくジムに行きます。</p>
-                <h2>好きなスポーツ</h2>
-                <p>特にサッカーが好きで、地元のチームを応援しています。</p>
-            </div>
-            <button onclick="readGoodHeadings()">この内容を読み上げる</button>
-            <button onclick="jumpGoodHeadings()">見出しだけ拾い読み（成功例）</button>
-        </div>
+  <div class="toolbar" role="group" aria-label="読み上げの設定">
+    <span class="toolbar-label" id="lbl-voice">音声</span>
+    <div class="seg" role="group" aria-labelledby="lbl-voice">
+      <button type="button" id="voice-on"  aria-pressed="true">オン</button>
+      <button type="button" id="voice-off" aria-pressed="false">オフ（字幕だけ）</button>
     </div>
-
-    <hr>
-
-    <h2>デモ2：テーブルの読み上げ</h2>
-    <div class="container">
-        <!-- 悪い例 -->
-        <div class="demo-section">
-            <h3>悪い例：構造化されていないテーブル</h3>
-            <div id="bad-table-content">
-                <table>
-                    <tbody>
-                        <tr>
-                            <td>氏名</td>
-                            <td>教科</td>
-                            <td>点数</td>
-                        </tr>
-                        <tr>
-                            <td>鈴木</td>
-                            <td>国語</td>
-                            <td>85</td>
-                        </tr>
-                        <tr>
-                            <td>田中</td>
-                            <td>数学</td>
-                            <td>92</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <button onclick="readBadTable()">このテーブルを読み上げる</button>
-        </div>
-
-        <!-- 良い例 -->
-        <div class="demo-section">
-            <h3>良い例：構造化されたテーブル</h3>
-            <div id="good-table-content">
-                <table id="good-table">
-                    <thead>
-                        <tr>
-                            <th scope="col">氏名</th>
-                            <th scope="col">教科</th>
-                            <th scope="col">点数</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <th scope="row">高橋</th>
-                            <td>国語</td>
-                            <td>78</td>
-                        </tr>
-                        <tr>
-                            <th scope="row">伊藤</th>
-                            <td>数学</td>
-                            <td>95</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <button onclick="readGoodTable()">このテーブルを読み上げる</button>
-        </div>
+    <span class="toolbar-label" id="lbl-rate">速さ</span>
+    <div class="seg" role="group" aria-labelledby="lbl-rate">
+      <button type="button" class="rate" data-rate="0.8" aria-pressed="false">ゆっくり</button>
+      <button type="button" class="rate" data-rate="1"   aria-pressed="true">ふつう</button>
+      <button type="button" class="rate" data-rate="1.4" aria-pressed="false">はやい</button>
     </div>
+    <span class="spacer"></span>
+    <button type="button" class="btn btn-stop" id="stop" disabled>■ 停止</button>
+    <p class="voice-warn" id="voice-warn" role="status" hidden>
+      この端末では日本語の音声が使えないようです。字幕だけで再生しています。
+    </p>
+  </div>
 
+  <!-- ================= デモ1：見出し ================= -->
+  <section class="demo" aria-labelledby="d1">
+    <h2 id="d1"><span class="demo-num" aria-hidden="true">1</span>見出しの読み上げと「拾い読み」</h2>
+    <p class="lead">見た目を大きくしただけの文字は、コンピューターには見出しとして伝わりません。</p>
 
-    <script>
-        // --- 読み上げとハイライトのコアロジック ---
+    <div class="pair">
 
-        let speechQueue = []; // 読み上げる要素のキュー
-        let currentHighlightElement = null; // 現在ハイライト中の要素
+      <!-- 悪い例 -->
+      <div class="panel" data-kind="ng">
+        <div class="panel-head">
+          <span class="badge">悪い例</span>
+          <h3>見た目だけの見出し（div）</h3>
+        </div>
+        <div class="panel-body">
+          <div class="doc" id="doc-bad">
+            <button type="button" class="line" data-visual="h1" data-role="text">
+              <span class="line-tag">&lt;div&gt;</span><span class="line-text">自己紹介</span>
+            </button>
+            <button type="button" class="line" data-visual="p" data-role="text">
+              <span class="line-tag">&lt;p&gt;</span><span class="line-text">私の名前は山田です。趣味は読書です。週末はよく図書館に行きます。</span>
+            </button>
+            <button type="button" class="line" data-visual="h2" data-role="text">
+              <span class="line-tag">&lt;div&gt;</span><span class="line-text">好きな本</span>
+            </button>
+            <button type="button" class="line" data-visual="p" data-role="text">
+              <span class="line-tag">&lt;p&gt;</span><span class="line-text">特にミステリー小説が好きで、国内外の様々な作品を読んでいます。</span>
+            </button>
+          </div>
+          <details class="src">
+            <summary>HTMLを見る</summary>
+<pre><span class="t">&lt;div</span> <span class="a">style</span>=<span class="a">"font-size:2em;font-weight:bold"</span><span class="t">&gt;</span>自己紹介<span class="t">&lt;/div&gt;</span>
+<span class="t">&lt;p&gt;</span>私の名前は山田です。…<span class="t">&lt;/p&gt;</span>
+<span class="c">&lt;!-- 大きい・太いだけ。見出しという情報は無い --&gt;</span></pre>
+          </details>
+        </div>
+        <div class="panel-foot">
+          <button type="button" class="btn-run" data-demo="read-bad-headings">▶ 上から順に読む</button>
+          <button type="button" class="btn-run" data-demo="jump-bad-headings">▶ 見出しだけ拾い読み</button>
+        </div>
+        <p class="panel-note">文字が大きいだけなので、「見出し」という情報が渡りません。拾い読みの手がかりがゼロです。</p>
+      </div>
 
-        /**
-         * 複数のHTML要素を順番に読み上げ、ハイライトする
-         * @param {NodeListOf<Element> | Element[]} elements - 読み上げる要素のリスト
-         */
-        function speakElements(elements) {
-            // 既存の読み上げをキャンセルし、キューをリセット
-            window.speechSynthesis.cancel();
-            if (currentHighlightElement) {
-                currentHighlightElement.classList.remove('highlight-reading');
-                currentHighlightElement = null;
-            }
-            speechQueue = Array.from(elements);
-            processSpeechQueue();
+      <!-- 良い例 -->
+      <div class="panel" data-kind="ok">
+        <div class="panel-head">
+          <span class="badge">良い例</span>
+          <h3>見出しタグを使った見出し（h1・h2）</h3>
+        </div>
+        <div class="panel-body">
+          <div class="doc" id="doc-good">
+            <button type="button" class="line" data-visual="h1" data-role="heading" data-level="1">
+              <span class="line-tag">&lt;h1&gt;</span><span class="line-text">自己紹介</span>
+            </button>
+            <button type="button" class="line" data-visual="p" data-role="text">
+              <span class="line-tag">&lt;p&gt;</span><span class="line-text">私の名前は佐藤です。趣味はスポーツです。週末はよくジムに行きます。</span>
+            </button>
+            <button type="button" class="line" data-visual="h2" data-role="heading" data-level="2">
+              <span class="line-tag">&lt;h2&gt;</span><span class="line-text">好きなスポーツ</span>
+            </button>
+            <button type="button" class="line" data-visual="p" data-role="text">
+              <span class="line-tag">&lt;p&gt;</span><span class="line-text">特にサッカーが好きで、地元のチームを応援しています。</span>
+            </button>
+          </div>
+          <details class="src">
+            <summary>HTMLを見る</summary>
+<pre><span class="t">&lt;h1&gt;</span>自己紹介<span class="t">&lt;/h1&gt;</span>
+<span class="t">&lt;p&gt;</span>私の名前は佐藤です。…<span class="t">&lt;/p&gt;</span>
+<span class="t">&lt;h2&gt;</span>好きなスポーツ<span class="t">&lt;/h2&gt;</span></pre>
+          </details>
+        </div>
+        <div class="panel-foot">
+          <button type="button" class="btn-run" data-demo="read-good-headings">▶ 上から順に読む</button>
+          <button type="button" class="btn-run" data-demo="jump-good-headings">▶ 見出しだけ拾い読み</button>
+        </div>
+        <p class="panel-note">「見出し レベル1」と読み上げられ、<strong>見出しジャンプ</strong>で目的の場所へ一気に移動できます。</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================= デモ2：表 ================= -->
+  <section class="demo" aria-labelledby="d2">
+    <h2 id="d2"><span class="demo-num" aria-hidden="true">2</span>表の読み上げ</h2>
+    <p class="lead">
+      表は2つの読み方があります。<strong>①上から順に読む</strong>と、どちらの表も似た聞こえ方になります。
+      差がはっきり出るのは<strong>②セルを移動しながら読む</strong>ときです。表のマスをタップすると、そのセルの読み上げを個別に確認できます。
+    </p>
+
+    <div class="pair">
+
+      <!-- 悪い例 -->
+      <div class="panel" data-kind="ng">
+        <div class="panel-head">
+          <span class="badge">悪い例</span>
+          <h3>構造化されていない表（すべて td）</h3>
+        </div>
+        <div class="panel-body">
+          <div class="tablewrap">
+            <table class="tbl" id="tbl-bad" data-structured="false">
+              <tbody>
+                <tr>
+                  <td><button type="button" class="cell">氏名</button></td>
+                  <td><button type="button" class="cell">教科</button></td>
+                  <td><button type="button" class="cell">点数</button></td>
+                </tr>
+                <tr>
+                  <td><button type="button" class="cell">鈴木</button></td>
+                  <td><button type="button" class="cell">国語</button></td>
+                  <td><button type="button" class="cell">85</button></td>
+                </tr>
+                <tr>
+                  <td><button type="button" class="cell">田中</button></td>
+                  <td><button type="button" class="cell">数学</button></td>
+                  <td><button type="button" class="cell">92</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <details class="src">
+            <summary>HTMLを見る</summary>
+<pre><span class="t">&lt;table&gt;&lt;tbody&gt;</span>
+  <span class="t">&lt;tr&gt;&lt;td&gt;</span>氏名<span class="t">&lt;/td&gt;&lt;td&gt;</span>教科<span class="t">&lt;/td&gt;&lt;td&gt;</span>点数<span class="t">&lt;/td&gt;&lt;/tr&gt;</span>
+  <span class="t">&lt;tr&gt;&lt;td&gt;</span>鈴木<span class="t">&lt;/td&gt;&lt;td&gt;</span>国語<span class="t">&lt;/td&gt;&lt;td&gt;</span>85<span class="t">&lt;/td&gt;&lt;/tr&gt;</span>
+<span class="c">  &lt;!-- 見出しセル(th)も scope も無い --&gt;</span>
+<span class="t">&lt;/tbody&gt;&lt;/table&gt;</span></pre>
+          </details>
+        </div>
+        <div class="panel-foot">
+          <button type="button" class="btn-run" data-demo="say-all-bad">▶ ① 上から順に読む</button>
+          <button type="button" class="btn-run" data-demo="cells-bad">▶ ② セルを移動しながら読む</button>
+        </div>
+        <p class="panel-note">セルを移動しても「行3 列3 92」としか分かりません。<strong>92が何の数字なのか伝わらない</strong>のです。</p>
+      </div>
+
+      <!-- 良い例 -->
+      <div class="panel" data-kind="ok">
+        <div class="panel-head">
+          <span class="badge">良い例</span>
+          <h3>構造化された表（th＋scope＋caption）</h3>
+        </div>
+        <div class="panel-body">
+          <div class="tablewrap">
+            <table class="tbl" id="tbl-good" data-structured="true">
+              <caption>テスト結果</caption>
+              <thead>
+                <tr>
+                  <th scope="col"><button type="button" class="cell">氏名</button></th>
+                  <th scope="col"><button type="button" class="cell">教科</button></th>
+                  <th scope="col"><button type="button" class="cell">点数</button></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row"><button type="button" class="cell">高橋</button></th>
+                  <td><button type="button" class="cell">国語</button></td>
+                  <td><button type="button" class="cell">78</button></td>
+                </tr>
+                <tr>
+                  <th scope="row"><button type="button" class="cell">伊藤</button></th>
+                  <td><button type="button" class="cell">数学</button></td>
+                  <td><button type="button" class="cell">95</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <details class="src">
+            <summary>HTMLを見る</summary>
+<pre><span class="t">&lt;table&gt;</span>
+  <span class="t">&lt;caption&gt;</span>テスト結果<span class="t">&lt;/caption&gt;</span>
+  <span class="t">&lt;thead&gt;&lt;tr&gt;</span>
+    <span class="t">&lt;th</span> <span class="a">scope</span>=<span class="a">"col"</span><span class="t">&gt;</span>氏名<span class="t">&lt;/th&gt;</span> …
+  <span class="t">&lt;/tr&gt;&lt;/thead&gt;</span>
+  <span class="t">&lt;tbody&gt;&lt;tr&gt;</span>
+    <span class="t">&lt;th</span> <span class="a">scope</span>=<span class="a">"row"</span><span class="t">&gt;</span>高橋<span class="t">&lt;/th&gt;</span>
+    <span class="t">&lt;td&gt;</span>国語<span class="t">&lt;/td&gt;&lt;td&gt;</span>78<span class="t">&lt;/td&gt;</span>
+  <span class="t">&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;</span></pre>
+          </details>
+        </div>
+        <div class="panel-foot">
+          <button type="button" class="btn-run" data-demo="say-all-good">▶ ① 上から順に読む</button>
+          <button type="button" class="btn-run" data-demo="cells-good">▶ ② セルを移動しながら読む</button>
+        </div>
+        <p class="panel-note">列が変わるたび列見出し、行が変わるたび行見出しが読まれます。セルを直接タップすると<strong>「伊藤 点数 95」</strong>と両方の見出しが分かります。</p>
+      </div>
+
+    </div>
+  </section>
+
+  <p class="caveat">
+    <strong>※ この再現について：</strong>
+    読み上げ内容は NVDA（Windows）のブラウズモード／表操作を参考にした<strong>簡略版</strong>です。
+    実際に読まれる語句・順序・コーディネート（行番号・列番号）の有無は、スクリーンリーダーの種類（NVDA・PC-Talker・VoiceOver・JAWSなど）、
+    ブラウザ、バージョン、利用者の設定によって異なります。授業では「だいたいこう聞こえる」という目安として使ってください。
+  </p>
+</div>
+
+<!-- ================= 字幕バー ================= -->
+<div class="cc" id="cc" data-open="false">
+  <div class="cc-main">
+    <span class="cc-label" aria-hidden="true">読み上げ</span>
+    <p class="cc-text" id="cc-text" role="status"></p>
+    <button type="button" class="cc-toggle" id="cc-toggle" aria-expanded="false" aria-controls="cc-log">全文</button>
+  </div>
+  <div class="cc-log" id="cc-log">
+    <ol id="cc-list"></ol>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* =========================================================
+     読み上げエンジン
+     - 1つずつ発話し、onend で次へ進む
+     - 音声が出ない環境（iOSの消音・音声非対応・headless等）でも
+       ウォッチドッグで字幕だけは必ず進む
+     ========================================================= */
+  const synth = window.speechSynthesis || null;
+  let jaVoice = null;
+  let rate = 1;
+  let voiceOn = true;
+  let queue = [];
+  let playing = false;
+  let token = 0;             // 再生セッションの識別子（キャンセル判定用）
+  let watchdog = 0;
+  let markedEl = null;
+  let activeBtn = null;
+
+  const $ = (id) => document.getElementById(id);
+  const ccText = $('cc-text');
+  const ccList = $('cc-list');
+  const ccBox  = $('cc');
+  const stopBtn = $('stop');
+
+  function pickVoice() {
+    if (!synth) return;
+    const vs = synth.getVoices() || [];
+    jaVoice = vs.find(v => v.lang === 'ja-JP') || vs.find(v => (v.lang || '').toLowerCase().startsWith('ja')) || null;
+  }
+  if (synth) {
+    pickVoice();
+    synth.addEventListener?.('voiceschanged', pickVoice);
+  }
+
+  const estimate = (text) => 500 + text.length * (150 / rate);   // ミリ秒の目安
+
+  function mark(el) {
+    if (markedEl === el) return;
+    markedEl?.classList.remove('is-reading');
+    markedEl = el || null;
+    markedEl?.classList.add('is-reading');
+  }
+
+  function showCaption(text, group) {
+    ccText.textContent = text;
+    if (group) {
+      const li = document.createElement('li');
+      li.className = 'grp';
+      li.textContent = group;
+      ccList.appendChild(li);
+    }
+    const li = document.createElement('li');
+    li.textContent = text;
+    ccList.appendChild(li);
+    ccList.parentElement.scrollTop = ccList.parentElement.scrollHeight;
+  }
+
+  /** steps: [{ text, el?, group? }] */
+  function play(steps, btn) {
+    stopAll();
+    queue = steps.slice();
+    playing = true;
+    token++;
+    activeBtn = btn || null;
+    activeBtn?.setAttribute('aria-pressed', 'true');
+    stopBtn.disabled = false;
+    next(token);
+  }
+
+  function next(myToken) {
+    if (myToken !== token) return;
+    if (!queue.length) { finish(); return; }
+
+    const step = queue.shift();
+    showCaption(step.text, step.group);
+    mark(step.el || null);
+
+    const advance = () => {
+      clearTimeout(watchdog);
+      // 続けて発話するときに間を少し入れる（聞き取りやすさとiOS対策）
+      setTimeout(() => next(myToken), 120);
+    };
+
+    const want = estimate(step.text);
+
+    if (voiceOn && synth) {
+      let started = false;
+      const t0 = Date.now();
+      const u = new SpeechSynthesisUtterance(step.text);
+      u.lang = 'ja-JP';
+      u.rate = rate;
+      if (jaVoice) u.voice = jaVoice;
+      u.onstart = () => { started = true; };
+      // 実際に発話されなかった（日本語音声が無い等）ときは、
+      // 字幕が一瞬で流れてしまわないよう目安の時間だけ待つ
+      u.onend = () => {
+        if (myToken !== token) return;
+        const spent = Date.now() - t0;
+        if (spent < want * 0.35) {
+          noteSilentVoice();
+          clearTimeout(watchdog);
+          watchdog = setTimeout(advance, want - spent);
+        } else {
+          advance();
         }
+      };
+      u.onerror = () => { if (myToken === token) { noteSilentVoice(); clearTimeout(watchdog); watchdog = setTimeout(advance, want); } };
+      try { synth.speak(u); } catch (_) { /* 下のウォッチドッグで進む */ }
+      // onend が来ない環境（iOSの不具合など）でも止まらないようにする
+      watchdog = setTimeout(() => {
+        if (myToken !== token) return;
+        if (!started) { try { synth.cancel(); } catch (_) {} }
+        advance();
+      }, want + 2500);
+    } else {
+      watchdog = setTimeout(advance, want);
+    }
+  }
 
-        /**
-         * キューから要素を一つ取り出し、読み上げ処理を開始する
-         */
-        function processSpeechQueue() {
-            if (speechQueue.length === 0) {
-                if (currentHighlightElement) {
-                     currentHighlightElement.classList.remove('highlight-reading');
-                     currentHighlightElement = null;
-                }
-                return;
-            }
+  let silentNoted = false;
+  function noteSilentVoice() {
+    if (silentNoted) return;
+    silentNoted = true;
+    const el = document.getElementById('voice-warn');
+    if (el) el.hidden = false;
+  }
 
-            const element = speechQueue.shift();
-            const textToSpeak = element.innerText;
-            
-            // 空の要素はスキップ
-            if (!textToSpeak.trim()) {
-                processSpeechQueue();
-                return;
-            }
-            
-            const utterance = new SpeechSynthesisUtterance(textToSpeak);
-            utterance.lang = 'ja-JP';
-            utterance.rate = 1.2;
+  function finish() {
+    playing = false;
+    clearTimeout(watchdog);
+    mark(null);
+    activeBtn?.setAttribute('aria-pressed', 'false');
+    activeBtn = null;
+    stopBtn.disabled = true;
+  }
 
-            utterance.onstart = () => {
-                // 前のハイライトを消し、新しい要素をハイライト
-                if (currentHighlightElement) {
-                    currentHighlightElement.classList.remove('highlight-reading');
-                }
-                element.classList.add('highlight-reading');
-                currentHighlightElement = element;
-            };
+  function stopAll() {
+    token++;
+    queue = [];
+    clearTimeout(watchdog);
+    try { synth?.cancel(); } catch (_) {}
+    mark(null);
+    activeBtn?.setAttribute('aria-pressed', 'false');
+    activeBtn = null;
+    playing = false;
+    stopBtn.disabled = true;
+  }
 
-            utterance.onend = () => {
-                // キューの次の要素へ
-                processSpeechQueue();
-            };
-            
-            window.speechSynthesis.speak(utterance);
+  stopBtn.addEventListener('click', stopAll);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stopAll(); });
+  window.addEventListener('pagehide', stopAll);
+
+  /* =========================================================
+     設定バー
+     ========================================================= */
+  const setVoice = (on) => {
+    voiceOn = on;
+    $('voice-on').setAttribute('aria-pressed', String(on));
+    $('voice-off').setAttribute('aria-pressed', String(!on));
+    stopAll();
+  };
+  $('voice-on').addEventListener('click', () => setVoice(true));
+  $('voice-off').addEventListener('click', () => setVoice(false));
+
+  document.querySelectorAll('.rate').forEach((b) => {
+    b.addEventListener('click', () => {
+      rate = Number(b.dataset.rate);
+      document.querySelectorAll('.rate').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      stopAll();
+    });
+  });
+
+  $('cc-toggle').addEventListener('click', () => {
+    const open = ccBox.dataset.open !== 'true';
+    ccBox.dataset.open = String(open);
+    $('cc-toggle').setAttribute('aria-expanded', String(open));
+    $('cc-toggle').textContent = open ? '閉じる' : '全文';
+    syncCcHeight();
+  });
+
+  // 字幕バーの高さぶんだけ本文に余白をとる
+  const syncCcHeight = () => {
+    document.documentElement.style.setProperty('--cc-h', `${ccBox.offsetHeight}px`);
+  };
+  window.addEventListener('resize', syncCcHeight);
+  if (window.ResizeObserver) new ResizeObserver(syncCcHeight).observe(ccBox);
+  syncCcHeight();
+
+  /* =========================================================
+     読み上げ文の生成（見出し）
+     ========================================================= */
+  const lineText = (el) => el.querySelector('.line-text').textContent.trim();
+
+  function announceLine(el) {
+    return el.dataset.role === 'heading'
+      ? `見出し　レベル${el.dataset.level}　${lineText(el)}`
+      : lineText(el);
+  }
+
+  function readDoc(id, group) {
+    return [...document.querySelectorAll(`#${id} .line`)]
+      .map((el, i) => ({ text: announceLine(el), el, group: i === 0 ? group : null }));
+  }
+
+  function jumpHeadings(id, group) {
+    const heads = [...document.querySelectorAll(`#${id} .line[data-role="heading"]`)];
+    if (!heads.length) {
+      return [{ text: '見出しがありません', el: null, group }];
+    }
+    return heads.map((el, i) => ({ text: announceLine(el), el, group: i === 0 ? group : null }));
+  }
+
+  /* =========================================================
+     読み上げ文の生成（表）
+     ========================================================= */
+  const cellText = (cellEl) => cellEl.querySelector('.cell').textContent.trim();
+
+  function tableInfo(table) {
+    const structured = table.dataset.structured === 'true';
+    const rows = [...table.rows];
+    const caption = table.caption ? table.caption.textContent.trim() : '';
+    const colCount = rows[0].cells.length;
+    return { structured, rows, caption, colCount };
+  }
+
+  /** その表の「表に入ったとき」のアナウンス */
+  function enterText(table) {
+    const { rows, caption, colCount } = tableInfo(table);
+    return `${caption ? caption + '　' : ''}テーブル　${rows.length}行${colCount}列`;
+  }
+
+  /** 列見出し・行見出しを取り出す（構造化されていない表では null） */
+  function headersFor(table, cell) {
+    const { structured } = tableInfo(table);
+    if (!structured) return { col: null, row: null };
+    const row = cell.parentElement;
+    const head = table.tHead;
+    const col = head && row.parentElement !== head
+      ? cellText(head.rows[0].cells[cell.cellIndex]) : null;
+    const rowHeadCell = row.querySelector('th[scope="row"]');
+    const rowHead = rowHeadCell && rowHeadCell !== cell ? cellText(rowHeadCell) : null;
+    return { col, row: rowHead };
+  }
+
+  /** ① 上から順に読む（say all）：行ごとにセルの内容をつなげて読む */
+  function sayAll(table, group) {
+    const { rows } = tableInfo(table);
+    const steps = [{ text: enterText(table), el: table, group }];
+    rows.forEach((row) => {
+      steps.push({ text: [...row.cells].map(cellText).join('　'), el: row });
+    });
+    steps.push({ text: 'テーブル外', el: null });
+    return steps;
+  }
+
+  /** ② セルを移動しながら読む：直前のセルから変わった見出しだけを読む */
+  function walkCells(table, group) {
+    const { rows } = tableInfo(table);
+    const steps = [{ text: enterText(table), el: table, group }];
+    let prevRow = -1, prevCol = -1;
+
+    rows.forEach((row, r) => {
+      [...row.cells].forEach((cell, c) => {
+        const h = headersFor(table, cell);
+        const parts = [];
+        if (r !== prevRow) {
+          parts.push(`行${r + 1}`);
+          if (h.row) parts.push(h.row);
         }
-        
-        /**
-         * 単一のテキストを読み上げる（特定の要素に紐付かない場合に使用）
-         */
-        function speakMessage(text) {
-             window.speechSynthesis.cancel();
-             if (currentHighlightElement) {
-                currentHighlightElement.classList.remove('highlight-reading');
-                currentHighlightElement = null;
-            }
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'ja-JP';
-            utterance.rate = 1.2;
-            window.speechSynthesis.speak(utterance);
+        if (c !== prevCol) {
+          if (h.col) parts.push(h.col);
+          parts.push(`列${c + 1}`);
         }
+        parts.push(cellText(cell));
+        steps.push({ text: parts.join('　'), el: cell.querySelector('.cell') });
+        prevRow = r; prevCol = c;
+      });
+    });
+    steps.push({ text: 'テーブル外', el: null });
+    return steps;
+  }
 
-        // --- 各デモのボタンに対応する関数 ---
+  /** セルを直接タップしたとき：行も列も移動したので、両方の見出しを読む */
+  function jumpToCell(table, cell) {
+    const r = cell.parentElement.rowIndex;
+    const c = cell.cellIndex;
+    const h = headersFor(table, cell);
+    const parts = [];
+    if (h.row) parts.push(h.row);
+    if (h.col) parts.push(h.col);
+    parts.push(`行${r + 1}`, `列${c + 1}`, cellText(cell));
+    return parts.join('　');
+  }
 
-        // === 見出しデモ ===
+  /* =========================================================
+     ボタンの割り当て
+     ========================================================= */
+  const DEMOS = {
+    'read-bad-headings':  () => readDoc('doc-bad',  '悪い例：上から順に読む'),
+    'jump-bad-headings':  () => jumpHeadings('doc-bad',  '悪い例：見出しだけ拾い読み'),
+    'read-good-headings': () => readDoc('doc-good', '良い例：上から順に読む'),
+    'jump-good-headings': () => jumpHeadings('doc-good', '良い例：見出しだけ拾い読み'),
+    'say-all-bad':  () => sayAll($('tbl-bad'),  '悪い例：上から順に読む'),
+    'cells-bad':    () => walkCells($('tbl-bad'),  '悪い例：セルを移動'),
+    'say-all-good': () => sayAll($('tbl-good'), '良い例：上から順に読む'),
+    'cells-good':   () => walkCells($('tbl-good'), '良い例：セルを移動'),
+  };
 
-        function readBadHeadings() {
-            const elements = document.querySelectorAll('#bad-headings-content > *');
-            speakElements(elements);
-        }
+  document.querySelectorAll('[data-demo]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (btn.getAttribute('aria-pressed') === 'true') { stopAll(); return; }
+      play(DEMOS[btn.dataset.demo](), btn);
+    });
+  });
 
-        function jumpBadHeadings() {
-            speakMessage("divタグではどれが見出しか判別できないため、拾い読みができません。");
-        }
+  // 疑似文書の行をタップ → その1行だけ読み上げ
+  document.querySelectorAll('.doc .line').forEach((el) => {
+    el.addEventListener('click', () => play([{ text: announceLine(el), el, group: 'この行をタップ' }]));
+  });
 
-        function readGoodHeadings() {
-            const elements = document.querySelectorAll('#good-headings-content > *');
-            speakElements(elements);
-        }
+  // 表のセルをタップ → そのセルへ移動したときの読み上げ
+  document.querySelectorAll('.tbl').forEach((table) => {
+    table.addEventListener('click', (e) => {
+      const btn = e.target.closest('.cell');
+      if (!btn) return;
+      const cell = btn.closest('th, td');
+      play([{ text: jumpToCell(table, cell), el: btn, group: 'このセルをタップ' }]);
+    });
+  });
+})();
+</script>
 
-        function jumpGoodHeadings() {
-            const elements = document.querySelectorAll('#good-headings-content h1, #good-headings-content h2');
-            speakElements(elements);
-        }
-
-        // === テーブルデモ ===
-
-        function readBadTable() {
-            // 行ごとに読み上げる
-            const rows = document.querySelectorAll('#bad-table-content tr');
-            speakElements(rows);
-        }
-
-        // 良いテーブルは意味のある単位で読み上げるため、特別な処理
-        async function readGoodTable() {
-            window.speechSynthesis.cancel(); // 進行中の読み上げを停止
-            
-            const table = document.getElementById('good-table');
-            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent);
-            const rows = table.querySelectorAll('tbody tr');
-            
-            // 読み上げとハイライトを非同期で実行するヘルパー関数
-            const speakAndHighlight = (text, element) => {
-                return new Promise(resolve => {
-                    if (currentHighlightElement) {
-                        currentHighlightElement.classList.remove('highlight-reading');
-                    }
-                    element.classList.add('highlight-reading');
-                    currentHighlightElement = element;
-
-                    const utterance = new SpeechSynthesisUtterance(text); // <- Fixed typo here
-                    utterance.lang = 'ja-JP';
-                    utterance.rate = 1.2;
-                    utterance.onend = resolve; // 読み上げ完了でPromiseを解決
-                    window.speechSynthesis.speak(utterance);
-                });
-            };
-            
-            await speakAndHighlight("テーブルを読み上げます。", table);
-
-            for (const row of rows) {
-                const rowHeader = row.querySelector('th').textContent;
-                const cells = row.querySelectorAll('td');
-                // 1行分の読み上げテキストを生成します
-                let textToSpeak = `${rowHeader}の`;
-                
-                cells.forEach((cell, index) => {
-                    const headerText = headers[index + 1]; // "教科" または "点数"
-                    const cellText = cell.textContent;
-
-                    textToSpeak += `、${headerText}は${cellText}`;
-
-                    // 条件分岐：列の見出しが「点数」の場合のみ「点」を付ける
-                    if (headerText === '点数') {
-                        textToSpeak += '点';
-                    }
-                });
-                textToSpeak += '。'; // 最後に句点を追加
-                
-                // 生成したテキストで読み上げとハイライトを実行
-                await speakAndHighlight(textToSpeak, row);
-            }
-            
-            // 最後にハイライトを消す
-            if (currentHighlightElement) {
-                currentHighlightElement.classList.remove('highlight-reading');
-                currentHighlightElement = null;
-            }
-        }
-    </script>
 </body>
 </html>
-
