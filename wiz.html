@@ -1,501 +1,776 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>魔法使いのポーション調合2</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Kiwi Maru', serif;
-            touch-action: pan-y; /* 縦スクロールを許可し、ピンチズームは無効に */
-        }
-        .bg-magic {
-            background-color: #1a202c;
-            background-image: radial-gradient(circle, #3a3a5a 1px, transparent 1px);
-            background-size: 1.5rem 1.5rem;
-        }
-        .ingredient {
-            cursor: grab;
-            transition: transform 0.2s ease-in-out;
-            touch-action: auto; /* 材料の上ではタッチ操作をブラウザ標準に戻す */
-        }
-        .ingredient:active {
-            cursor: grabbing;
-            transform: scale(1.1);
-            z-index: 10;
-        }
-        .recipe-scroll {
-            background-color: #f5e8c7;
-            border: 8px solid #a17a4a;
-            border-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z' fill='%23a17a4a'/%3E%3C/svg%3E") 8;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
-        }
-        .ingredient {
-            cursor: grab;
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        }
-        .ingredient:hover {
-            transform: scale(1.1);
-            box-shadow: 0 0 20px rgba(255, 255, 100, 0.7);
-        }
-        .dragging {
-            opacity: 0.5;
-            cursor: grabbing;
-        }
-        /* タッチ操作中のゴースト要素のスタイル */
-        .dragging-touch {
-            position: fixed; /* 画面に固定 */
-            pointer-events: none; /* イベントを透過させる */
-            z-index: 1000;
-            opacity: 0.8;
-            transform: scale(1.1);
-        }
-        /* ドラッグ元の要素を半透明にする */
-        .opacity-30 {
-            opacity: 0.3;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>魔法使いのポーション調合 ｜ 色だけに頼らない伝え方</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   魔法使いのポーション調合
+   高等学校 情報Ⅰ 補助教材「情報アクセシビリティをはじめよう」
+   - 外部フレームワーク・外部画像に依存しない（フォント以外はオフラインで動作）
+   - 「色だけの指示」と「色＋形＋名前の指示」で、失敗の回数をくらべる
+   ========================================================= */
 
-        .cauldron-drop-zone.dragover {
-            transform: scale(1.05);
-            box-shadow: 0 0 30px 10px rgba(72, 255, 201, 0.7);
-        }
+:root{
+  --bg:#171532; --panel:#241f4d; --panel-2:#2e2757; --line:#413a72;
+  --ink:#f1f5f9; --ink-soft:#c8cee4; --ink-mute:#a3abc7;
+  --gold:#fcd34d; --gold-dark:#78350f;
+  --ok:#4ade80; --ng:#fca5a5;
+  --paper:#f6ecd2; --paper-border:#a17a4a;
 
-        /* Animations */
-        @keyframes sparkle {
-            0% { transform: scale(0); opacity: 0; }
-            50% { transform: scale(1.5); opacity: 1; }
-            100% { transform: scale(0); opacity: 0; }
-        }
-        .sparkle {
-            position: absolute;
-            width: 15px;
-            height: 15px;
-            background: gold;
-            border-radius: 50%;
-            pointer-events: none;
-            animation: sparkle 0.7s ease-out;
-        }
+  --r-sm:8px; --r-md:12px; --r-lg:18px; --r-xl:24px;
+  --shadow-1:0 2px 6px rgba(0,0,0,.35);
+  --shadow-2:0 10px 28px rgba(0,0,0,.45);
+  --tap:44px;
 
-        @keyframes smoke {
-            0% { transform: scale(0.5) translateY(0); opacity: 0; }
-            50% { opacity: 0.6; }
-            100% { transform: scale(1.5) translateY(-50px); opacity: 0; }
-        }
-        .smoke {
-            position: absolute;
-            width: 80px;
-            height: 80px;
-            background: #888;
-            border-radius: 50%;
-            pointer-events: none;
-            animation: smoke 1s ease-out forwards;
-        }
-        @keyframes frog-jump {
-            0% { transform: translateY(0) scale(0.5); opacity: 0; }
-            30% { transform: translateY(-80px) scale(1) rotate(-15deg); opacity: 1; }
-            100% { transform: translateY(50px) scale(1.2) rotate(15deg); opacity: 0; }
-        }
-        .frog-jump {
-            position: absolute;
-            font-size: 4rem;
-            pointer-events: none;
-            animation: frog-jump 0.8s ease-in-out forwards;
-        }
-    </style>
+  --font:'M PLUS Rounded 1c','Hiragino Maru Gothic ProN','BIZ UDPGothic','Yu Gothic UI','Hiragino Sans',system-ui,sans-serif;
+  --font-fun:'Kiwi Maru',var(--font);
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0; font-family:var(--font); color:var(--ink);
+  background:var(--bg);
+  background-image:radial-gradient(circle, rgba(140,150,220,.22) 1px, transparent 1px);
+  background-size:26px 26px;
+  line-height:1.75; -webkit-tap-highlight-color:transparent;
+}
+button{ font:inherit; color:inherit; }
+:focus-visible{ outline:3px solid var(--gold); outline-offset:3px; border-radius:8px; }
+@media (prefers-reduced-motion:reduce){ *{ animation:none!important; transition-duration:.01ms!important; } }
+
+/* ---------- 骨格 ---------- */
+.wrap{
+  max-width:1060px; margin-inline:auto;
+  padding:clamp(12px,2.5vw,26px) clamp(12px,2.5vw,20px) calc(28px + env(safe-area-inset-bottom));
+}
+.pagehead{ text-align:center; margin-bottom:clamp(12px,2vw,20px); }
+.pagehead h1{
+  margin:0; font-family:var(--font-fun); font-weight:500;
+  font-size:clamp(1.5rem,1.2rem+1.5vw,2.2rem); color:var(--gold);
+  text-shadow:0 2px 10px rgba(0,0,0,.6);
+}
+.pagehead p{ margin:.4em auto 0; max-width:56ch; color:var(--ink-soft); font-size:clamp(.85rem,.8rem+.2vw,.98rem); }
+
+.screen{ display:none; }
+.screen.is-active{ display:block; }
+
+.panel{
+  background:var(--panel); border:1px solid var(--line);
+  border-radius:var(--r-lg); box-shadow:var(--shadow-2);
+  padding:clamp(16px,2.6vw,26px);
+}
+
+/* ---------- 共通パーツ ---------- */
+.btn{
+  -webkit-appearance:none; appearance:none;
+  min-height:var(--tap); padding:12px 26px; border-radius:999px;
+  border:2px solid transparent; font-weight:800; cursor:pointer;
+  box-shadow:var(--shadow-1); touch-action:manipulation;
+  transition:transform .12s ease, background-color .12s ease;
+}
+.btn:active{ transform:scale(.985); }
+.btn-primary{ background:var(--gold); color:#1e1b34; font-size:1.02rem; }
+.btn-primary:hover{ background:#fde68a; }
+.btn-ghost{ background:transparent; color:var(--ink-soft); border-color:var(--line); }
+.btn-ghost:hover{ background:var(--panel-2); }
+.btn-block{ display:block; width:100%; }
+.btn-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; }
+.btn-row .btn{ flex:1 1 200px; }
+
+.note{
+  margin-top:16px; padding:14px 16px; border-radius:var(--r-md);
+  background:var(--panel-2); border:1px solid var(--line);
+}
+.note h3{ margin:0 0 4px; font-size:.95rem; font-weight:800; color:var(--gold); }
+.note p{ margin:0; font-size:.88rem; color:var(--ink-soft); }
+.title{ margin:0; font-family:var(--font-fun); font-weight:500; font-size:clamp(1.4rem,1.15rem+1.2vw,1.9rem); color:var(--gold); }
+.subtitle{ margin:.6em 0 0; color:var(--ink-soft); font-size:clamp(.9rem,.86rem+.2vw,1rem); }
+
+/* ---------- 進行バー ---------- */
+.hud{
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  margin-bottom:14px; padding:10px 16px;
+  background:var(--panel-2); border:1px solid var(--line); border-radius:999px;
+}
+.hud .stage{ font-size:.78rem; font-weight:800; color:var(--gold); }
+.hud .sep{ flex:1 1 auto; }
+.hud .miss{ font-size:.85rem; font-weight:800; color:var(--ink-soft); }
+.hud .miss b{ font-size:1.15rem; color:var(--ng); font-variant-numeric:tabular-nums; }
+
+/* ---------- ゲーム盤 ---------- */
+.board{ display:grid; grid-template-columns:minmax(0,1fr); gap:clamp(12px,2vw,20px); align-items:start; }
+@media (min-width:820px){ .board{ grid-template-columns:minmax(0,1fr) minmax(0,1.05fr); } }
+
+/* レシピ */
+.recipe{
+  background:var(--paper);
+  border:6px solid var(--paper-border);
+  border-radius:6px;
+  box-shadow:var(--shadow-2);
+  padding:18px 20px;
+  color:#1e293b;
+}
+.recipe h2{ margin:0 0 10px; font-family:var(--font-fun); font-weight:500; font-size:1.1rem; color:#5b3a12; }
+.recipe ol{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+.recipe li{
+  display:flex; align-items:center; gap:10px;
+  padding:8px 12px; border-radius:var(--r-sm);
+  background:rgba(0,0,0,.04); font-size:1rem; font-weight:700;
+}
+.recipe li .n{
+  flex:none; width:24px; height:24px; border-radius:50%;
+  background:#a17a4a; color:#fff; display:grid; place-items:center;
+  font-size:.78rem; font-weight:800;
+}
+.recipe li[data-state="now"]{ background:var(--gold); color:var(--gold-dark); box-shadow:0 0 0 2px #b45309; }
+.recipe li[data-state="now"] .n{ background:var(--gold-dark); }
+.recipe li[data-state="done"]{ opacity:.5; text-decoration:line-through; }
+.recipe li .mark{ flex:none; margin-left:auto; font-weight:800; }
+.recipe li[data-state="done"] .mark::after{ content:"✓"; color:#15803d; }
+.recipe li[data-state="now"] .mark::after{ content:"いま"; font-size:.72rem; }
+.recipe .sym{ flex:none; width:22px; height:22px; }
+
+/* 大鍋 */
+.cauldron-area{ display:flex; flex-direction:column; align-items:center; gap:12px; }
+.cauldron{
+  position:relative;
+  -webkit-appearance:none; appearance:none;
+  width:min(280px,72vw); aspect-ratio:1/.86;
+  border:0; background:none; cursor:pointer; padding:0;
+  touch-action:manipulation;
+  transition:transform .15s ease, filter .15s ease;
+}
+.cauldron svg{ display:block; width:100%; height:auto; }
+.cauldron.is-over{ transform:scale(1.05); filter:drop-shadow(0 0 22px rgba(252,211,77,.75)); }
+.cauldron.is-ready{ filter:drop-shadow(0 0 16px rgba(252,211,77,.55)); }
+.fx{ position:absolute; inset:0; pointer-events:none; overflow:visible; }
+
+.master{
+  display:flex; gap:12px; align-items:flex-start;
+  width:100%; padding:12px 14px;
+  background:var(--panel-2); border:1px solid var(--line); border-radius:var(--r-md);
+}
+.master .ava{ flex:none; width:52px; height:52px; }
+.master p{ margin:0; font-size:.9rem; color:var(--ink-soft); }
+.master p b{ color:var(--gold); }
+.master[data-tone="ng"]{ border-color:#7f3b3b; background:#3a2440; }
+.master[data-tone="ok"]{ border-color:#2f6b46; background:#1f3a3a; }
+
+/* 材料棚 */
+.shelf-wrap{ margin-top:clamp(14px,2vw,20px); }
+.shelf-head{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+.shelf-head h2{ margin:0; font-family:var(--font-fun); font-weight:500; font-size:1.1rem; color:var(--gold); }
+.shelf-head .tip{ font-size:.78rem; color:var(--ink-mute); }
+.shelf{
+  display:grid; gap:10px;
+  grid-template-columns:repeat(auto-fill,minmax(94px,1fr));
+  padding:14px; border-radius:var(--r-lg);
+  background:var(--panel-2); border:1px solid var(--line);
+}
+.bottle{
+  position:relative;
+  -webkit-appearance:none; appearance:none;
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  padding:10px 6px; border-radius:var(--r-md);
+  background:rgba(255,255,255,.05); border:2px solid transparent;
+  cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none;
+  transition:transform .12s ease, border-color .12s ease, background-color .12s ease;
+}
+.bottle:hover{ border-color:var(--gold); background:rgba(255,255,255,.1); }
+.bottle:active{ cursor:grabbing; }
+.bottle svg{ display:block; width:100%; height:auto; }
+.bottle .vial{ width:58px; }
+.bottle .name{ font-size:.7rem; line-height:1.3; color:var(--ink-soft); text-align:center; min-height:1.3em; }
+.bottle[aria-pressed="true"]{
+  border-color:var(--gold); background:rgba(252,211,77,.18);
+  transform:translateY(-3px);
+}
+.bottle[aria-pressed="true"]::after{
+  content:"選択中"; position:absolute; top:-10px; right:-4px;
+  font-size:.62rem; font-weight:800; color:#1e1b34; background:var(--gold);
+  border-radius:999px; padding:0 8px; box-shadow:var(--shadow-1);
+}
+.bottle.is-used{ opacity:.35; }
+.ghost{
+  position:fixed; z-index:1000; pointer-events:none;
+  transform:translate(-50%,-50%) scale(1.15);
+  filter:drop-shadow(0 8px 16px rgba(0,0,0,.5));
+}
+
+/* エフェクト */
+@keyframes sparkle{ 0%{transform:scale(0);opacity:0} 45%{transform:scale(1.4);opacity:1} 100%{transform:scale(0);opacity:0} }
+.sparkle{ position:absolute; width:14px; height:14px; border-radius:50%; background:var(--gold); animation:sparkle .8s ease-out forwards; }
+@keyframes smoke{ 0%{transform:translateY(0) scale(.5);opacity:0} 40%{opacity:.55} 100%{transform:translateY(-90px) scale(1.7);opacity:0} }
+.smoke{ position:absolute; left:50%; top:40%; width:80px; height:80px; margin:-40px 0 0 -40px; border-radius:50%; background:#9aa0b5; animation:smoke 1.1s ease-out forwards; }
+@keyframes hop{ 0%{transform:translate(-50%,0) scale(.6);opacity:0} 35%{transform:translate(-50%,-90px) scale(1) rotate(-14deg);opacity:1} 100%{transform:translate(-50%,60px) scale(1.2) rotate(16deg);opacity:0} }
+.frog{ position:absolute; left:50%; top:34%; width:56px; animation:hop 1s ease-in-out forwards; }
+
+/* ---------- 結果 ---------- */
+.score{ display:grid; grid-template-columns:minmax(0,1fr); gap:12px; margin:20px 0 4px; }
+@media (min-width:560px){ .score{ grid-template-columns:1fr 1fr; } }
+.score-card{ padding:16px; border-radius:var(--r-lg); border:2px solid; text-align:center; background:var(--panel-2); }
+.score-card[data-kind="ng"]{ border-color:#7f3b3b; }
+.score-card[data-kind="ok"]{ border-color:#2f6b46; }
+.score-card .lbl{ font-size:.8rem; font-weight:800; color:var(--ink-soft); }
+.score-card .num{ font-size:2.6rem; font-weight:800; line-height:1.1; font-variant-numeric:tabular-nums; }
+.score-card[data-kind="ng"] .num{ color:var(--ng); }
+.score-card[data-kind="ok"] .num{ color:var(--ok); }
+.score-card .unit{ font-size:.85rem; color:var(--ink-mute); }
+
+.learn{
+  margin-top:20px; padding:16px; border-radius:var(--r-md);
+  background:rgba(252,211,77,.12); border:1px solid var(--gold); color:var(--ink);
+}
+.learn h3{ margin:0 0 6px; font-size:1rem; font-weight:800; color:var(--gold); }
+.learn p{ margin:0; font-size:.92rem; color:var(--ink-soft); }
+
+.fixes{ margin-top:18px; display:grid; grid-template-columns:minmax(0,1fr); gap:10px; }
+@media (min-width:640px){ .fixes{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.fix{ padding:12px 14px; border-radius:var(--r-md); background:var(--panel-2); border:1px solid var(--line); }
+.fix b{ display:block; font-size:.9rem; color:var(--gold); }
+.fix span{ font-size:.84rem; color:var(--ink-soft); }
+
+.visually-hidden{
+  position:absolute!important; width:1px; height:1px; margin:-1px; padding:0;
+  overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0;
+}
+.credit{ text-align:center; margin:18px 0 0; font-size:.75rem; color:var(--ink-mute); }
+kbd{
+  font-family:inherit; font-size:.78em; font-weight:700;
+  background:var(--panel-2); border:1px solid var(--line); border-bottom-width:2px;
+  border-radius:5px; padding:0 5px;
+}
+</style>
 </head>
-<body class="bg-magic text-white min-h-screen flex items-center justify-center p-4">
+<body>
 
-    <div id="game-container" class="w-full max-w-5xl mx-auto text-center">
-        <!-- Header -->
-        <h1 class="text-4xl font-bold mb-2 text-yellow-300" style="text-shadow: 2px 2px 4px #000;">魔法使いのポーション調合</h1>
-        <p class="text-lg mb-6">師匠のレシピ通りに、ポーションを完成させるのじゃ！</p>
+<div class="wrap">
+  <header class="pagehead">
+    <h1>魔法使いのポーション調合</h1>
+    <p>師匠のレシピどおりにポーションを作ろう。……でも、材料のビンにはラベルが付いていない。</p>
+  </header>
 
-        <div class="flex flex-col lg:flex-row gap-8 items-center justify-between">
-            <!-- Recipe Section -->
-            <div id="recipe-section" class="w-full lg:w-1/3">
-                <h2 class="text-2xl font-bold mb-3 text-yellow-200">📜 魔法のレシピ</h2>
-                <div class="recipe-scroll p-6 rounded-lg text-gray-800">
-                    <ul id="recipe-list" class="text-left space-y-3">
-                        <!-- Recipe items will be generated here -->
-                    </ul>
-                </div>
-            </div>
+  <!-- ============ スタート ============ -->
+  <section class="screen is-active panel" id="s-start" aria-labelledby="t-start">
+    <h2 class="title" id="t-start">魔法使いの弟子になろう</h2>
+    <p class="subtitle">
+      あなたは魔法使いの弟子。師匠のレシピを見ながら、大鍋に材料を順番に入れていきます。
+    </p>
+    <div class="note">
+      <h3>あそび方</h3>
+      <p>
+        材料をタップして選び、大鍋をタップすると入ります（ドラッグでも入れられます）。
+        レシピの順番どおりに入れると成功。ちがう材料を入れると失敗して、<strong>失敗の回数</strong>が記録されます。
+      </p>
+    </div>
+    <div class="note">
+      <h3>このゲームで確かめること</h3>
+      <p>
+        <strong>ステージ1</strong>ではラベルのない棚で、<strong>ステージ2</strong>ではラベルの付いた棚で調合します。
+        失敗の回数がどう変わるか、くらべてみましょう。
+      </p>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn btn-primary btn-block" id="btn-start">調合をはじめる</button>
+    </div>
+  </section>
 
-            <!-- Cauldron Section -->
-            <div id="cauldron-section" class="relative w-full lg:w-1/3 flex flex-col items-center">
-                 <div id="animation-area" class="absolute inset-0 flex items-center justify-center pointer-events-none"></div>
-                 <div class="cauldron-drop-zone w-48 h-40 bg-gray-800 border-4 border-gray-600 rounded-t-full rounded-b-lg flex items-center justify-center transition-all duration-300"
-                    style="box-shadow: 0 10px 15px rgba(0,0,0,0.5) inset;">
-                    <div class="w-40 h-32 bg-purple-800 rounded-t-full rounded-b-md opacity-75 relative overflow-hidden">
-                       <div class="absolute bottom-0 left-0 w-full h-1/3 bg-purple-600 rounded-full animate-pulse"></div>
-                    </div>
-                </div>
-                <div class="text-2xl mt-2">🧪 大鍋</div>
-            </div>
-        </div>
-
-        <!-- Ingredients Shelf -->
-        <div id="shelf-section" class="mt-10">
-            <h2 class="text-2xl font-bold mb-4 text-yellow-200">🌿 材料棚</h2>
-            <div id="ingredients-shelf" class="bg-yellow-900/50 p-4 rounded-lg grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-4 border-2 border-yellow-800">
-                <!-- Ingredients will be generated here -->
-            </div>
-        </div>
+  <!-- ============ プレイ ============ -->
+  <section class="screen" id="s-play" aria-labelledby="t-play">
+    <div class="hud">
+      <span class="stage" id="stage-label"></span>
+      <span class="sep"></span>
+      <span class="miss">失敗 <b id="miss">0</b> 回</span>
     </div>
 
-    <!-- Result Modal -->
-    <div id="result-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
-        <div class="bg-gray-800 border-4 border-yellow-500 rounded-lg p-8 text-center max-w-md w-full relative">
-             <img src="https://placehold.co/100x100/7a4a2a/f5e8c7?text=🧙‍♂️" alt="師匠" class="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-yellow-300">
-            <h2 id="modal-title" class="text-3xl font-bold mb-4 text-yellow-300"></h2>
-            <p id="modal-message" class="text-lg mb-6"></p>
-            <button id="restart-button" class="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-3 px-6 rounded-lg text-xl shadow-lg transform hover:scale-105 transition-transform">もう一度挑戦</button>
+    <div class="panel">
+      <h2 class="visually-hidden" id="t-play">調合台</h2>
+      <div class="board">
+
+        <div class="recipe">
+          <h2>📜 師匠のレシピ</h2>
+          <ol id="recipe"></ol>
         </div>
+
+        <div class="cauldron-area">
+          <button type="button" class="cauldron" id="cauldron" aria-label="大鍋。選んだ材料を入れます">
+            <svg viewBox="0 0 240 206" aria-hidden="true">
+              <ellipse cx="120" cy="196" rx="92" ry="10" fill="rgba(0,0,0,.45)"/>
+              <path d="M26 84 h188 a12 12 0 0 1 12 12 v14 a106 96 0 0 1 -212 0 v-14 a12 12 0 0 1 12 -12 z" fill="#33304f"/>
+              <path d="M32 92 h176 v18 a88 82 0 0 1 -176 0 z" fill="#1f1d33"/>
+              <ellipse cx="120" cy="92" rx="94" ry="20" fill="#3f3b60"/>
+              <ellipse id="brew" cx="120" cy="93" rx="84" ry="16" fill="#7c3aed"/>
+              <ellipse id="brew2" cx="120" cy="91" rx="62" ry="11" fill="#a855f7" opacity=".85"/>
+              <circle cx="96" cy="90" r="5" fill="#c4b5fd" opacity=".8"/>
+              <circle cx="132" cy="94" r="3.5" fill="#c4b5fd" opacity=".7"/>
+              <circle cx="150" cy="88" r="2.5" fill="#ddd6fe" opacity=".7"/>
+              <rect x="8" y="150" width="224" height="14" rx="7" fill="#33304f"/>
+              <path d="M52 164 l-14 34 M188 164 l14 34" stroke="#33304f" stroke-width="12" stroke-linecap="round"/>
+            </svg>
+            <span class="fx" id="fx"></span>
+          </button>
+          <p style="margin:0;font-size:.85rem;color:var(--ink-mute)" id="cauldron-hint">材料を選んでから、大鍋をタップ</p>
+
+          <div class="master" id="master" data-tone="">
+            <svg class="ava" viewBox="0 0 64 64" aria-hidden="true">
+              <circle cx="32" cy="32" r="30" fill="#3b2f6b"/>
+              <path d="M32 12 L48 40 H16 Z" fill="#5b4bb8"/>
+              <circle cx="32" cy="17" r="4" fill="#fcd34d"/>
+              <ellipse cx="32" cy="46" rx="15" ry="12" fill="#f3d5c0"/>
+              <path d="M18 44 q14 26 28 0 q-4 18 -14 18 q-10 0 -14 -18Z" fill="#e2e8f0"/>
+              <circle cx="27" cy="44" r="2.2" fill="#1e293b"/>
+              <circle cx="37" cy="44" r="2.2" fill="#1e293b"/>
+            </svg>
+            <p id="master-say"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="shelf-wrap">
+        <div class="shelf-head">
+          <h2 id="shelf-title">🌿 材料棚</h2>
+          <span class="tip">タップで選択 →  大鍋をタップ。<kbd>Tab</kbd>と<kbd>Enter</kbd>でも操作できます。</span>
+        </div>
+        <div class="shelf" id="shelf" role="group" aria-labelledby="shelf-title"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ステージ1のまとめ ============ -->
+  <section class="screen panel" id="s-bridge" aria-labelledby="t-bridge">
+    <h2 class="title" id="t-bridge">ステージ1、おつかれさま</h2>
+    <p class="subtitle" id="bridge-msg"></p>
+    <div class="note">
+      <h3>気づきましたか？</h3>
+      <p>
+        レシピには「赤い液体」としか書かれていないのに、棚には<strong>赤い液体が2本</strong>ありました。
+        どちらのことか、<strong>どんなに目を凝らしても分かりません</strong>。
+        これは「見る力」の問題ではなく、<strong>色だけで指示したこと</strong>が原因です。
+      </p>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn btn-primary btn-block" id="btn-next">師匠にラベルを付けてもらう</button>
+    </div>
+  </section>
+
+  <!-- ============ 結果 ============ -->
+  <section class="screen panel" id="s-result" aria-labelledby="t-result">
+    <h2 class="title" id="t-result">ポーション完成！</h2>
+    <p class="subtitle" id="result-msg"></p>
+
+    <div class="score">
+      <div class="score-card" data-kind="ng">
+        <p class="lbl" style="margin:0">ステージ1　ラベルなし</p>
+        <p class="num" style="margin:2px 0 0" id="score-ng">0</p>
+        <p class="unit" style="margin:0">回 失敗</p>
+      </div>
+      <div class="score-card" data-kind="ok">
+        <p class="lbl" style="margin:0">ステージ2　ラベルあり</p>
+        <p class="num" style="margin:2px 0 0" id="score-ok">0</p>
+        <p class="unit" style="margin:0">回 失敗</p>
+      </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // --- Game Data ---
-            const allIngredients = [
-                // Correct ingredients pool
-                { id: 'red-fire', name: '赤い液体', color: 'bg-red-500', symbol: '🔥', isCorrect: true },
-                { id: 'green-leaf', name: '緑の粉', color: 'bg-green-500', symbol: '🍃', isCorrect: true },
-                { id: 'blue-water', name: '青い液体', color: 'bg-blue-500', symbol: '💧', isCorrect: true },
-                { id: 'yellow-star', name: '黄の結晶', color: 'bg-yellow-400', symbol: '⭐', isCorrect: true },
-                { id: 'purple-moon', name: '紫の液体', color: 'bg-purple-500', symbol: '🌙', isCorrect: true },
-                { id: 'orange-feather', name: '橙の羽根', color: 'bg-orange-500', symbol: '🪶', isCorrect: true },
+    <div class="learn">
+      <h3>学習ポイント</h3>
+      <p id="learn-text"></p>
+    </div>
 
-                // Decoys
-                { id: 'red-water', name: '赤黒い液体', color: 'bg-red-800', symbol: '💧' },
-                { id: 'green-skull', name: '深緑の粉', color: 'bg-green-800', symbol: '💀' },
-                { id: 'blue-moon', name: '藍色の液体', color: 'bg-blue-800', symbol: '🌙' },
-                { id: 'yellow-skull', name: '黄土の結晶', color: 'bg-yellow-700', symbol: '💀' },
-                { id: 'red-leaf', name: '暗い赤の液体', color: 'bg-red-700', symbol: '🍃' },
-                { id: 'green-fire', name: '黄緑の粉', color: 'bg-lime-400', symbol: '🔥' },
-                { id: 'purple-star', name: '濃紫の液体', color: 'bg-purple-800', symbol: '⭐' },
-                { id: 'orange-skull', name: '濁った橙の粉', color: 'bg-orange-800', symbol: '💀' },
-                { id: 'white-skull', name: '白い骨', color: 'bg-gray-200 text-black', symbol: '💀' },
-                { id: 'black-fire', name: '黒い灰', color: 'bg-gray-900', symbol: '🔥' },
-            ];
+    <div class="fixes">
+      <div class="fix"><b>グラフ</b><span>色だけでなく、線の種類（実線・破線）や模様を変える。凡例にも何のデータか書く。</span></div>
+      <div class="fix"><b>リンク</b><span>文字の色を変えるだけでなく、下線を引く。</span></div>
+      <div class="fix"><b>必須項目</b><span>赤くするだけでなく「＊」や「（必須）」の文字も添える。</span></div>
+      <div class="fix"><b>エラー表示</b><span>赤くするだけでなく「！」アイコンと「入力内容に誤りがあります」の文章を出す。</span></div>
+    </div>
 
-            let recipe = [];
-            const RECIPE_LENGTH = 4; // Increased recipe length
+    <div class="note">
+      <h3>ちなみに</h3>
+      <p>
+        日本では男性の約20人に1人、女性の約500人に1人が、特定の色を区別しにくい色覚特性を持つと言われています（出典：日本眼科学会）。
+        資料を白黒で印刷したときや、画面を白黒設定にしているときも同じことが起こります。
+      </p>
+    </div>
 
-            let currentStep = 0;
-            let draggedIngredientId = null;
+    <div class="btn-row">
+      <button type="button" class="btn btn-primary" id="btn-again">もう一度あそぶ</button>
+    </div>
+  </section>
 
-            // --- タッチ操作用の変数 ---
-            let ghostElement = null;
-            let isTouchDragging = false;
-            let startTouchX = 0;
-            let startTouchY = 0;
+  <p class="credit">高等学校 情報Ⅰ 補助教材「つくって、つたえる、みんなのために」</p>
+</div>
 
-            // --- DOM Elements ---
-            const recipeList = document.getElementById('recipe-list');
-            const ingredientsShelf = document.getElementById('ingredients-shelf');
-            const cauldronDropZone = document.querySelector('.cauldron-drop-zone');
-            const animationArea = document.getElementById('animation-area');
-            const resultModal = document.getElementById('result-modal');
-            const modalTitle = document.getElementById('modal-title');
-            const modalMessage = document.getElementById('modal-message');
-            const restartButton = document.getElementById('restart-button');
+<p class="visually-hidden" id="live" role="status" aria-live="polite"></p>
 
-            // --- Game Logic ---
-            function shuffleArray(array) {
-                for (let i = array.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [array[i], array[j]] = [array[j], array[i]];
-                }
-                return array;
-            }
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const live = $('live');
+  const say = (t) => { live.textContent = t; };
 
-            function generateRecipe() {
-                const correctIngredients = allIngredients.filter(ing => ing.isCorrect);
-                const shuffled = shuffleArray([...correctIngredients]);
-                recipe = shuffled.slice(0, RECIPE_LENGTH);
-            }
+  /* =========================================================
+     1. 材料データ
+        6色 × 2本ずつ。同じ色名のビンが必ず2本あるので、
+        「色だけ」の指示では、どちらか決められない。
+     ========================================================= */
+  const SHAPES = {
+    flame:  'M12 2c3 4 1 6 3 8 1.4 1.4 2 3 2 4.6A5.6 5.6 0 0 1 12 21a5.6 5.6 0 0 1-5-6.4c0-3 2-4.6 3-7 .6 1.6 1.6 2 2 1 .6-1.6-.4-4 0-6.6z',
+    leaf:   'M4 20c0-9 6-15 16-16 1 10-5 16-14 16H4zm2-1c4-5 8-8 12-10-5 1.6-9 5-12 10z',
+    drop:   'M12 2c4 5.5 6.5 9 6.5 12A6.5 6.5 0 0 1 12 21a6.5 6.5 0 0 1-6.5-7c0-3 2.5-6.5 6.5-12z',
+    star:   'M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z',
+    moon:   'M20 14.5A9 9 0 0 1 9 3.2 9.2 9.2 0 1 0 20 14.5z',
+    feather:'M20 3c-8 0-14 5-15 13l-1 5 4-1c8-1 12-8 12-17zM6.5 19.5L15 11',
+    skull:  'M12 2a8 8 0 0 0-8 8c0 3 1.5 4.5 2.5 5.5V19a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-3.5C18.5 14.5 20 13 20 10a8 8 0 0 0-8-8zM9 10.5a1.8 1.8 0 1 1 0 .01zm6 0a1.8 1.8 0 1 1 0 .01z',
+    spiral: 'M12 21a9 9 0 1 0-9-9 7 7 0 0 0 7 7 5 5 0 0 0 5-5 3 3 0 0 0-3-3 1.6 1.6 0 0 0-1.6 1.6',
+    bolt:   'M13 2L4 14h6l-1 8 9-12h-6z',
+    gem:    'M6 3h12l4 6-10 12L2 9z',
+    eye:    'M12 5c5.5 0 9.5 4.4 10.5 7-1 2.6-5 7-10.5 7S2.5 14.6 1.5 12C2.5 9.4 6.5 5 12 5zm0 3.4A3.6 3.6 0 1 0 12 15.6 3.6 3.6 0 0 0 12 8.4z',
+    bone:   'M6 9a3 3 0 1 1 3-3l6 6a3 3 0 1 1 3 3 3 3 0 1 1-3 3l-6-6a3 3 0 1 1-3-3z',
+  };
+  const SHAPE_NAME = {
+    flame:'ほのお', leaf:'はっぱ', drop:'しずく', star:'ほし', moon:'つき', feather:'はね',
+    skull:'どくろ', spiral:'うずまき', bolt:'いなずま', gem:'ほうせき', eye:'め', bone:'ほね',
+  };
 
-            function setupGame(isEasyMode = false) {
-                currentStep = 0;
-                draggedIngredientId = null;
+  // color: 見た目 / cname: レシピに書かれる色名 / shape: ラベルの形
+  const ITEMS = [
+    { id:'r1', cname:'赤い液体',  color:'#e0342c', shape:'flame',  key:true },
+    { id:'r2', cname:'赤い液体',  color:'#c22f27', shape:'skull'  },
+    { id:'g1', cname:'緑の粉',    color:'#2e9e4f', shape:'leaf',   key:true },
+    { id:'g2', cname:'緑の粉',    color:'#2a8a4a', shape:'spiral' },
+    { id:'b1', cname:'青い液体',  color:'#2563c9', shape:'drop',   key:true },
+    { id:'b2', cname:'青い液体',  color:'#2356b4', shape:'bolt'   },
+    { id:'y1', cname:'黄の結晶',  color:'#e8b30b', shape:'star',   key:true },
+    { id:'y2', cname:'黄の結晶',  color:'#d3a20a', shape:'gem'    },
+    { id:'p1', cname:'紫の液体',  color:'#7b3fbf', shape:'moon',   key:true },
+    { id:'p2', cname:'紫の液体',  color:'#6c37ab', shape:'eye'    },
+    { id:'o1', cname:'橙の粉',    color:'#e8730b', shape:'feather',key:true },
+    { id:'o2', cname:'橙の粉',    color:'#d2680b', shape:'bone'   },
+  ];
+  const byId = (id) => ITEMS.find((x) => x.id === id);
+  const fullName = (it) => `${it.cname}・${SHAPE_NAME[it.shape]}`;
 
-                // Generate a new random recipe
-                generateRecipe();
+  const MASTER = {
+    start1:'よく来たな、弟子よ。レシピどおりに材料を入れるのじゃ。……おっと、ビンのラベルは剥がれてしまってのう。',
+    start2:'ラベルを付けておいたぞ。これなら分かるじゃろう。',
+    ok:    'うむ、それでよい。次じゃ。',
+    ng1same:(c) => `ちがう……いや、それも<b>「${c}」</b>じゃな。どちらのことか、わしにも分からんわい。`,
+    ng1other:(want, got) => `それは<b>「${got}」</b>じゃろう。レシピは<b>「${want}」</b>じゃ。……とはいえ、色だけでは見分けにくいのう。`,
+    ng2:   'おっと、ラベルをよく見るのじゃ。名前と形が書いてあるじゃろう。',
+    done:  'みごとじゃ！ポーションが完成したぞ。',
+  };
 
-                // Render Recipe
-                renderRecipe();
+  /* =========================================================
+     2. 状態
+     ========================================================= */
+  const state = { stage:0, recipe:[], step:0, miss:[0,0], selected:null, used:new Set(), order:[], locked:false };
 
-                // Render Ingredients
-                ingredientsShelf.innerHTML = '';
-                const shuffledIngredients = shuffleArray([...allIngredients]);
-                shuffledIngredients.forEach(ing => {
-                    const ingElement = document.createElement('div');
-                    ingElement.id = ing.id;
-                    ingElement.draggable = true;
-                    ingElement.className = 'ingredient p-2 bg-gray-700 rounded-lg flex flex-col items-center justify-center aspect-square text-center';
-                    
-                    if (isEasyMode) {
-                        // 通常モード：アイコンと文字を表示
-                        ingElement.innerHTML = `
-                            <div class="w-10 h-10 ${ing.color} rounded-full border-2 border-gray-400 flex items-center justify-center text-3xl mb-1">
-                                ${ing.symbol}
-                            </div>
-                            <div class="text-xs leading-tight">${ing.name}</div>
-                        `;
-                    } else {
-                        // 高難易度モード：色のみ表示
-                        ingElement.innerHTML = `
-                            <div class="w-full h-full ${ing.color} rounded-full border-2 border-gray-400">
-                            </div>
-                        `;
-                    }
+  const shuffle = (a) => {                       // Fisher–Yates
+    const x = a.slice();
+    for (let i = x.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [x[i], x[j]] = [x[j], x[i]]; }
+    return x;
+  };
 
-                    ingElement.addEventListener('dragstart', handleDragStart);
-                    ingElement.addEventListener('dragend', handleDragEnd);
+  const show = (id) => {
+    ['s-start', 's-play', 's-bridge', 's-result'].forEach((s) => $(s).classList.toggle('is-active', s === id));
+    window.scrollTo(0, 0);
+  };
 
-                    // --- モバイル用のタッチイベントを追加 ---
-                    ingElement.addEventListener('touchstart', handleTouchStart, { passive: false }); // スクロールを防ぐ可能性があることをブラウザに伝える
+  /* =========================================================
+     3. 見た目のつくり
+     ========================================================= */
+  const isLight = (hex) => {
+    const n = parseInt(hex.slice(1), 16);
+    const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+      v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.42;
+  };
 
-                    ingredientsShelf.appendChild(ingElement);
-                });
-                
-                resultModal.classList.add('hidden');
-            }
+  /** ビンのSVG。labelled=true なら中に形のしるしを描く */
+  const FLASK = 'M27 13 h10 v17 a22 22 0 1 1 -10 0 z';
+  function vialSVG(it, labelled) {
+    const ink = isLight(it.color) ? '#1e293b' : '#ffffff';
+    const mark = labelled
+      ? `<g transform="translate(32 58) scale(1.5) translate(-12 -12)">
+           <path d="${SHAPES[it.shape]}" fill="${ink}" stroke="${ink}" stroke-width=".7" stroke-linejoin="round"/>
+         </g>`
+      : '';
+    return `<svg class="vial" viewBox="0 0 64 86" aria-hidden="true">
+      <defs><clipPath id="clip-${it.id}"><path d="${FLASK}"/></clipPath></defs>
+      <rect x="25" y="2" width="14" height="12" rx="3" fill="#8b7355"/>
+      <path d="${FLASK}" fill="rgba(255,255,255,.10)"/>
+      <g clip-path="url(#clip-${it.id})">
+        <rect x="0" y="34" width="64" height="52" fill="${it.color}"/>
+        <ellipse cx="32" cy="34" rx="26" ry="4" fill="#ffffff" opacity=".22"/>
+      </g>
+      ${mark}
+      <path d="${FLASK}" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.4"/>
+      <path d="M22 48 q4 -10 10 -13" stroke="rgba(255,255,255,.5)" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </svg>`;
+  }
 
-            function renderRecipe() {
-                recipeList.innerHTML = '';
-                recipe.forEach((item, index) => {
-                    const li = document.createElement('li');
-                    li.className = `transition-all duration-300 p-2 rounded ${index < currentStep ? 'opacity-50 line-through' : ''} ${index === currentStep ? 'bg-yellow-200 font-bold' : ''}`;
-                    li.innerHTML = `<span>${index + 1}. ${item.name} ${item.symbol}</span>`;
-                    recipeList.appendChild(li);
-                });
-            }
+  /** ステージ開始時に一度だけ組み立てる（並びが変わると探しにくいため） */
+  function buildShelf() {
+    const labelled = state.stage === 1;
+    const shelf = $('shelf');
+    shelf.innerHTML = '';
+    state.order.forEach((id) => {
+      const it = byId(id);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'bottle';
+      b.dataset.id = it.id;
+      b.setAttribute('aria-pressed', 'false');
+      b.innerHTML = vialSVG(it, labelled) +
+        `<span class="name">${labelled ? fullName(it) : ''}</span>`;
+      b.setAttribute('aria-label', labelled ? fullName(it) : `${it.cname}のようなビン`);
+      shelf.appendChild(b);
+    });
+  }
 
-            function handleIngredientDrop() {
-                const requiredIngredient = recipe[currentStep];
+  /** 選択状態と「使用済み」だけを更新する（DOMは作り直さない） */
+  function updateShelf() {
+    [...$('shelf').children].forEach((b) => {
+      b.setAttribute('aria-pressed', String(b.dataset.id === state.selected));
+      b.classList.toggle('is-used', state.used.has(b.dataset.id));
+    });
+  }
 
-                if (draggedIngredientId === requiredIngredient.id) {
-                    // Correct ingredient
-                    playSuccessAnimation();
-                    currentStep++;
-                    renderRecipe();
+  function renderRecipe() {
+    const labelled = state.stage === 1;
+    const ol = $('recipe');
+    ol.innerHTML = '';
+    state.recipe.forEach((it, i) => {
+      const li = document.createElement('li');
+      li.dataset.state = i < state.step ? 'done' : i === state.step ? 'now' : '';
+      const ink = i === state.step ? '#78350f' : '#5b3a12';
+      li.innerHTML =
+        `<span class="n">${i + 1}</span>` +
+        (labelled
+          ? `<svg class="sym" viewBox="0 0 24 24" aria-hidden="true"><path d="${SHAPES[it.shape]}" fill="${ink}"/></svg>`
+          : '') +
+        `<span>${labelled ? fullName(it) : it.cname}</span><span class="mark"></span>`;
+      ol.appendChild(li);
+    });
+  }
 
-                    if (currentStep >= recipe.length) {
-                        setTimeout(() => showGameResult(true), 500);
-                    }
-                } else {
-                    // Incorrect ingredient
-                    playFailureAnimation();
-                    setTimeout(() => showGameResult(false), 500);
-                }
-            }
-            
-            function showGameResult(isSuccess) {
-                if (isSuccess) {
-                    modalTitle.textContent = '🎉 ポーション完成！ 🎉';
-                    modalMessage.textContent = '素晴らしいポーションが完成したぞ！正しい材料を、正しい手順で使う。これが一流の魔法使いへの道じゃ！';
-                    restartButton.textContent = 'もう一度挑戦';
-                    restartButton.onclick = () => {
-                        resultModal.classList.add('hidden');
-                        setupGame(false); // 次も高難易度で挑戦
-                    };
-                } else {
-                    modalTitle.textContent = '💥 調合失敗！ 💥';
-                    modalMessage.textContent = '失敗じゃな。色だけで判断するのは難しいじゃろ？普段からラベルに文字やアイコンを追加して区別しやすくしておくのが大切なんじゃ。よし、今回は儂がラベルを追加してやろう。これで再挑戦してみるがよい！';
-                    restartButton.textContent = 'ラベル付きで再挑戦';
-                     restartButton.onclick = () => {
-                        resultModal.classList.add('hidden');
-                        setupGame(true); // 次は通常モードで挑戦
-                    };
-                }
-                resultModal.classList.remove('hidden');
-            }
+  function tell(html, tone) {
+    $('master-say').innerHTML = html;
+    $('master').dataset.tone = tone || '';
+  }
 
+  /* =========================================================
+     4. ゲーム進行
+     ========================================================= */
+  function startStage(stage) {
+    state.stage = stage;
+    state.step = 0;
+    state.miss[stage] = 0;
+    state.selected = null;
+    state.locked = false;
+    state.used = new Set();
+    state.recipe = shuffle(ITEMS.filter((x) => x.key)).slice(0, 3);
+    state.order = shuffle(ITEMS).map((x) => x.id);
 
-            // --- Animations ---
-            function playSuccessAnimation() {
-                for (let i = 0; i < 15; i++) {
-                    const sparkle = document.createElement('div');
-                    sparkle.className = 'sparkle';
-                    sparkle.style.left = `${Math.random() * 100}%`;
-                    sparkle.style.top = `${Math.random() * 100}%`;
-                    sparkle.style.animationDelay = `${Math.random() * 0.5}s`;
-                    animationArea.appendChild(sparkle);
-                    setTimeout(() => sparkle.remove(), 1000);
-                }
-            }
-            
-            function playFailureAnimation() {
-                const failureType = Math.random() > 0.5 ? 'smoke' : 'frog';
+    $('stage-label').textContent = stage === 0 ? 'ステージ 1 / 2　ラベルのない棚' : 'ステージ 2 / 2　ラベルのある棚';
+    $('miss').textContent = '0';
+    renderRecipe();
+    buildShelf();
+    tell(stage === 0 ? MASTER.start1 : MASTER.start2, '');
+    updateCauldron();
+    show('s-play');
+  }
 
-                if (failureType === 'smoke') {
-                    const smoke = document.createElement('div');
-                    smoke.className = 'smoke';
-                    animationArea.appendChild(smoke);
-                    setTimeout(() => smoke.remove(), 1000);
-                } else {
-                    const frog = document.createElement('div');
-                    frog.className = 'frog-jump';
-                    frog.textContent = '🐸';
-                    animationArea.appendChild(frog);
-                    setTimeout(() => frog.remove(), 800);
-                }
-            }
+  function updateCauldron() {
+    const c = $('cauldron');
+    c.classList.toggle('is-ready', Boolean(state.selected));
+    $('cauldron-hint').textContent = state.selected
+      ? 'この材料を入れる → 大鍋をタップ'
+      : '材料を選んでから、大鍋をタップ';
+  }
 
+  function select(id) {
+    state.selected = state.selected === id ? null : id;
+    updateShelf();
+    updateCauldron();
+    if (state.selected) {
+      const it = byId(state.selected);
+      say(`${state.stage === 1 ? fullName(it) : it.cname + 'のようなビン'} を選びました`);
+    }
+  }
 
-            // --- Drag and Drop Event Handlers ---
-            function handleDragStart(e) {
-                if (isTouchDragging) { // タッチ操作中はマウスドラッグを無効化
-                    e.preventDefault();
-                    return;
-                }
-                draggedIngredientId = e.target.closest('.ingredient').id;
-                e.target.closest('.ingredient').classList.add('dragging');
-                e.dataTransfer.effectAllowed = 'move';
-            }
+  function pour(id) {
+    if (!id || state.locked || state.step >= state.recipe.length) return;
+    const it = byId(id);
+    const want = state.recipe[state.step];
 
-            function handleDragEnd(e) {
-                if (isTouchDragging) return;
-                e.target.closest('.ingredient').classList.remove('dragging');
-            }
-            
-            cauldronDropZone.addEventListener('dragenter', (e) => {
-                e.preventDefault();
-                cauldronDropZone.classList.add('dragover');
-            });
-            
-            cauldronDropZone.addEventListener('dragover', (e) => {
-                e.preventDefault(); // Necessary to allow drop
-            });
+    if (it.id === want.id) {
+      state.step++;
+      state.used.add(it.id);
+      sparkle();
+      tell(state.step >= state.recipe.length ? MASTER.done : MASTER.ok, 'ok');
+      say('正解です');
+      state.selected = null;
+      renderRecipe(); updateShelf(); updateCauldron();
+      if (state.step >= state.recipe.length) {
+        state.locked = true;
+        setTimeout(() => (state.stage === 0 ? bridge() : result()), 900);
+      }
+    } else {
+      state.miss[state.stage]++;
+      $('miss').textContent = String(state.miss[state.stage]);
+      fail();
+      tell(state.stage === 0
+        ? (it.cname === want.cname ? MASTER.ng1same(want.cname) : MASTER.ng1other(want.cname, it.cname))
+        : MASTER.ng2, 'ng');
+      say('失敗しました');
+      state.selected = null;
+      updateShelf(); updateCauldron();
+    }
+  }
 
-            cauldronDropZone.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                cauldronDropZone.classList.remove('dragover');
-            });
+  /* ---------- エフェクト ---------- */
+  function sparkle() {
+    const fx = $('fx');
+    for (let i = 0; i < 14; i++) {
+      const s = document.createElement('span');
+      s.className = 'sparkle';
+      s.style.left = `${10 + Math.random() * 80}%`;
+      s.style.top = `${10 + Math.random() * 50}%`;
+      s.style.animationDelay = `${Math.random() * 0.35}s`;
+      fx.appendChild(s);
+      setTimeout(() => s.remove(), 1300);
+    }
+  }
+  function fail() {
+    const fx = $('fx');
+    if (Math.random() < 0.5) {
+      const s = document.createElement('span');
+      s.className = 'smoke';
+      fx.appendChild(s);
+      setTimeout(() => s.remove(), 1200);
+    } else {
+      const f = document.createElement('span');
+      f.className = 'frog';
+      f.innerHTML = `<svg viewBox="0 0 64 56" aria-hidden="true">
+        <ellipse cx="32" cy="36" rx="24" ry="17" fill="#4ade80"/>
+        <circle cx="19" cy="18" r="11" fill="#4ade80"/><circle cx="45" cy="18" r="11" fill="#4ade80"/>
+        <circle cx="19" cy="17" r="5" fill="#fff"/><circle cx="45" cy="17" r="5" fill="#fff"/>
+        <circle cx="19" cy="18" r="2.6" fill="#14532d"/><circle cx="45" cy="18" r="2.6" fill="#14532d"/>
+        <path d="M22 38 q10 8 20 0" stroke="#14532d" stroke-width="3" fill="none" stroke-linecap="round"/>
+      </svg>`;
+      fx.appendChild(f);
+      setTimeout(() => f.remove(), 1100);
+    }
+  }
 
-            cauldronDropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                cauldronDropZone.classList.remove('dragover');
-                handleIngredientDrop();
-            });
-            
-            // --- モバイル用タッチイベントのハンドラー ---
+  /* =========================================================
+     5. 入力（タップ選択 ＋ ドラッグ ＋ キーボード）
+     ========================================================= */
+  const shelf = $('shelf');
+  const cauldron = $('cauldron');
+  let drag = null, suppressClick = false;
 
-            function handleTouchStart(e) {
-                if (e.touches.length !== 1) return; // マルチタッチは無視
-                const ingElement = e.target.closest('.ingredient');
-                if (!ingElement) return;
+  shelf.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('.bottle');
+    if (!b || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    b.setPointerCapture(e.pointerId);
+    drag = { id:b.dataset.id, el:b, x:e.clientX, y:e.clientY, sx:e.clientX, sy:e.clientY, active:false, ghost:null, pid:e.pointerId };
+  });
+  shelf.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.pid) return;
+    drag.x = e.clientX; drag.y = e.clientY;
+    if (!drag.active) {
+      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 8) return;
+      drag.active = true;
+      const g = drag.el.cloneNode(true);
+      g.classList.add('ghost');
+      g.removeAttribute('aria-pressed');
+      const r = drag.el.getBoundingClientRect();
+      g.style.width = `${r.width}px`;
+      document.body.appendChild(g);
+      drag.ghost = g;
+    }
+    e.preventDefault();
+    drag.ghost.style.left = `${drag.x}px`;
+    drag.ghost.style.top = `${drag.y}px`;
+    const r = cauldron.getBoundingClientRect();
+    const over = drag.x >= r.left && drag.x <= r.right && drag.y >= r.top && drag.y <= r.bottom;
+    cauldron.classList.toggle('is-over', over);
+  });
+  const endDrag = (e) => {
+    if (!drag || e.pointerId !== drag.pid) return;
+    if (drag.active) {
+      const r = cauldron.getBoundingClientRect();
+      const over = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+      cauldron.classList.remove('is-over');
+      drag.ghost?.remove();
+      if (over) pour(drag.id);
+      suppressClick = true;
+      setTimeout(() => { suppressClick = false; }, 0);
+    }
+    drag = null;
+  };
+  shelf.addEventListener('pointerup', endDrag);
+  shelf.addEventListener('pointercancel', endDrag);
 
-                // ドラッグ開始の準備
-                draggedIngredientId = ingElement.id;
-                const touch = e.touches[0];
-                startTouchX = touch.clientX;
-                startTouchY = touch.clientY;
-                // isTouchDragging は move で判定する
-            }
+  shelf.addEventListener('click', (e) => {
+    const b = e.target.closest('.bottle');
+    if (!b || suppressClick) { suppressClick = false; return; }
+    select(b.dataset.id);
+  });
 
-            function handleTouchMove(e) {
-                if (!draggedIngredientId) return; // ドラッグが開始されていない
-                if (e.touches.length !== 1) return; // マルチタッチ
+  cauldron.addEventListener('click', () => {
+    if (!state.selected) {
+      tell('まず、棚から材料を選ぶのじゃ。', '');
+      say('先に材料を選んでください');
+      return;
+    }
+    pour(state.selected);
+  });
 
-                const touch = e.touches[0];
+  /* =========================================================
+     6. まとめ画面
+     ========================================================= */
+  function bridge() {
+    const n = state.miss[0];
+    $('bridge-msg').textContent = n === 0
+      ? '失敗ゼロ！……でも、それは運です。レシピには「どちらの赤い液体か」が書かれていませんでした。'
+      : `完成までに ${n} 回失敗しました。`;
+    show('s-bridge');
+  }
 
-                if (!isTouchDragging) {
-                    // 5px以上動いたらドラッグ開始とみなす
-                    const deltaX = Math.abs(touch.clientX - startTouchX);
-                    const deltaY = Math.abs(touch.clientY - startTouchY);
+  function result() {
+    const a = state.miss[0], b = state.miss[1];
+    $('score-ng').textContent = String(a);
+    $('score-ok').textContent = String(b);
+    $('result-msg').textContent =
+      b < a ? `失敗の回数は ${a}回 → ${b}回 になりました。ラベル（名前と形）を足しただけで、これだけ変わります。`
+      : a === 0 ? 'ステージ1は運よく当たりましたが、レシピからは選びようがありませんでした。ラベルがあれば、誰でも一度で選べます。'
+      : `ステージ1は${a}回、ステージ2は${b}回でした。ラベルがあれば、迷わず選べたはずです。`;
+    $('learn-text').innerHTML =
+      '色は情報を<b>補強</b>するものであって、<b>代わりにはなりません</b>。' +
+      '「赤いほうを選んで」ではなく、名前・形・記号・言葉を一緒に添えること。' +
+      'そうすれば、色の見え方がちがう人にも、白黒で印刷した人にも、同じように伝わります。';
+    show('s-result');
+  }
 
-                    if (deltaX < 5 && deltaY < 5) {
-                        return; // 移動量が少ない場合は何もしない
-                    }
+  /* =========================================================
+     7. ボタン
+     ========================================================= */
+  $('btn-start').addEventListener('click', () => { state.miss = [0, 0]; startStage(0); });
+  $('btn-next').addEventListener('click', () => startStage(1));
+  $('btn-again').addEventListener('click', () => { state.miss = [0, 0]; show('s-start'); });
+})();
+</script>
 
-                    // ドラッグ開始
-                    isTouchDragging = true;
-                    
-                    const ingElement = document.getElementById(draggedIngredientId);
-                    if (!ingElement) return;
-
-                    // 指に追従するゴースト要素を作成
-                    ghostElement = ingElement.cloneNode(true);
-                    ghostElement.classList.add('dragging-touch');
-                    document.body.appendChild(ghostElement);
-                    
-                    // 元の要素を半透明に
-                    ingElement.classList.add('opacity-30');
-                }
-
-                // ドラッグ中の処理
-                if (isTouchDragging) {
-                    // スクロールを防止
-                    e.preventDefault();
-                    
-                    // ゴースト要素を指の位置に更新
-                    updateGhostPosition(touch);
-
-                    // 鍋の上にあるか判定
-                    const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
-                    if (elementAtPoint && elementAtPoint.closest('.cauldron-drop-zone')) {
-                        cauldronDropZone.classList.add('dragover');
-                    } else {
-                        cauldronDropZone.classList.remove('dragover');
-                    }
-                }
-            }
-
-            function handleTouchEnd(e) {
-                if (isTouchDragging && ghostElement) {
-                    // ドラッグ終了時の処理
-                    const touch = e.changedTouches[0];
-                    const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
-                    
-                    if (elementAtPoint && elementAtPoint.closest('.cauldron-drop-zone')) {
-                        // 鍋の上で指が離れた場合
-                        handleIngredientDrop();
-                    }
-
-                    // クリーンアップ
-                    document.body.removeChild(ghostElement);
-                    ghostElement = null;
-                    cauldronDropZone.classList.remove('dragover');
-                    
-                    const originalElement = document.getElementById(draggedIngredientId);
-                    if (originalElement) {
-                        originalElement.classList.remove('opacity-30');
-                    }
-                }
-
-                // 状態をリセット
-                isTouchDragging = false;
-                draggedIngredientId = null;
-                startTouchX = 0;
-                startTouchY = 0;
-            }
-
-            function updateGhostPosition(touch) {
-                 if (!ghostElement) return;
-                 // ゴースト要素が指の中心に来るように調整
-                 ghostElement.style.left = `${touch.clientX - ghostElement.offsetWidth / 2}px`;
-                 ghostElement.style.top = `${touch.clientY - ghostElement.offsetHeight / 2}px`;
-            }
-
-            // --- Event Listeners ---
-            // グローバルに touchmove と touchend を登録
-            document.addEventListener('touchmove', handleTouchMove, { passive: false });
-            document.addEventListener('touchend', handleTouchEnd);
-
-
-            // --- Initial Setup ---
-            setupGame(false); // 最初は高難易度モードで開始
-        });
-    </script>
 </body>
 </html>
-
-
-
-
-
-
