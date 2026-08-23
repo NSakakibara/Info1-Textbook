@@ -1,492 +1,1037 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ウェブ探検家と情報の羅針盤</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'M PLUS Rounded 1c', sans-serif;
-            /* body全体のtouch-action:none;は、モーダル等のスクロールを妨げるため削除 */
-        }
-        .tag {
-            cursor: grab;
-            user-select: none;
-            touch-action: none; /* タグ自体をタッチした時にページがスクロールしないように設定 */
-        }
-        .tag:active {
-            cursor: grabbing;
-        }
-        .drop-target {
-            border: 2px dashed #cbd5e1;
-            transition: all 0.2s ease-in-out;
-            min-height: 50px;
-        }
-        .drop-target.drag-over {
-            background-color: #e0f2fe;
-            border-color: #38bdf8;
-        }
-        .drop-target.tagged {
-            border-style: solid;
-            border-color: #94a3b8;
-        }
-        .drop-target.tagged::before {
-            content: attr(data-tag-display);
-            display: block;
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: #475569;
-            margin-bottom: 4px;
-            padding: 2px 6px;
-            background-color: #e2e8f0;
-            border-radius: 4px;
-            width: fit-content;
-        }
-        .h1-style { font-size: 2.25rem; font-weight: 800; }
-        .h2-style { font-size: 1.875rem; font-weight: 700; }
-        .h3-style { font-size: 1.5rem; font-weight: 700; }
-        .p-style { font-size: 1rem; font-weight: 400; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>ウェブ探検家と情報の羅針盤 ｜ 見出しをつけてみよう</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   ウェブ探検家と情報の羅針盤
+   高等学校 情報Ⅰ 補助教材「情報アクセシビリティをはじめよう」
+   - 外部フレームワーク非依存（フォント以外はオフラインで動作）
+   - マウス／タッチ／ペン／キーボードのすべてで操作可能
+   ========================================================= */
 
-        .feedback-modal {
-            animation: fadeIn 0.3s ease-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        /* タッチ操作中に表示するゴースト要素のスタイル */
-        .ghost-tag {
-            position: absolute;
-            z-index: 1000;
-            opacity: 0.8;
-            pointer-events: none; /* ゴースト要素自体がイベントを拾わないようにする */
-            transition: none; /* クローン元のtransitionを無効化 */
-        }
-    </style>
+/* ---------- デザイントークン ---------- */
+:root{
+  --ink:        #1e293b;
+  --ink-soft:   #475569;
+  --ink-mute:   #64748b;
+  --line:       #cbd5e1;
+  --line-soft:  #e2e8f0;
+  --bg:         #f1f5f9;
+  --surface:    #ffffff;
+  --surface-2:  #f8fafc;
+
+  --brand:      #0369a1;   /* 白文字とのコントラスト 5.93:1 */
+  --brand-dark: #075985;
+  --brand-tint: #f0f9ff;
+  --brand-line: #7dd3fc;
+
+  --h1c:  #6d28d9;
+  --h2c:  #1d4ed8;
+  --h3c:  #0f766e;
+  --pc:   #475569;
+
+  --ok:   #15803d;
+  --ng:   #b91c1c;
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+
+  --shadow-1: 0 1px 2px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.08);
+  --shadow-2: 0 4px 12px rgba(15,23,42,.10);
+  --shadow-3: 0 18px 45px rgba(15,23,42,.20);
+
+  --tap: 44px;             /* 最小タップターゲット */
+  --rail-w: 21rem;
+  --bar-h: 0px;            /* モバイル時の下部バー高さ（JSで設定） */
+
+  --font: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', 'BIZ UDPGothic',
+          'Yu Gothic UI', 'Hiragino Sans', 'Noto Sans JP', system-ui, sans-serif;
+}
+
+/* ---------- リセット ---------- */
+*, *::before, *::after{ box-sizing: border-box; }
+html{ -webkit-text-size-adjust: 100%; }
+body{
+  margin:0;
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--bg);
+  line-height: 1.7;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
+button{ font: inherit; color: inherit; }
+:focus-visible{
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:.01ms !important; transition-duration:.01ms !important; }
+}
+
+/* ---------- ページ骨格 ---------- */
+.page{
+  max-width: 1400px;
+  margin-inline: auto;
+  padding: clamp(12px, 2vw, 24px);
+  padding-bottom: calc(var(--bar-h) + env(safe-area-inset-bottom) + 16px);
+}
+.pagehead{
+  text-align:center;
+  margin: 4px 0 clamp(12px, 2vw, 22px);
+}
+.pagehead h1{
+  margin:0;
+  font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem);
+  font-weight:800;
+  color:#334155;
+  letter-spacing:.01em;
+}
+.pagehead p{
+  margin:.35em 0 0;
+  color: var(--ink-mute);
+  font-size: clamp(.875rem, .82rem + .25vw, 1rem);
+}
+
+.layout{
+  display:grid;
+  grid-template-columns: minmax(0,1fr);
+  gap: clamp(12px, 1.6vw, 24px);
+  align-items:start;
+}
+@media (min-width: 820px){
+  .layout{ grid-template-columns: 16.5rem minmax(0,1fr); }
+}
+@media (min-width: 1100px){
+  .layout{ grid-template-columns: var(--rail-w) minmax(0,1fr); }
+}
+
+/* ---------- 左カラム（スクロールしても固定） ---------- */
+.rail{ min-width:0; }
+@media (min-width: 820px){
+  .rail{
+    position: sticky;
+    top: clamp(12px, 2vw, 24px);
+    align-self: start;
+    max-height: calc(100vh - clamp(24px, 4vw, 48px));
+    max-height: calc(100dvh - clamp(24px, 4vw, 48px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    display:flex;
+    flex-direction:column;
+    gap: 14px;
+    padding-right: 2px;
+  }
+}
+
+.card{
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+}
+
+/* --- 学者パネル --- */
+.mentor{ padding: 16px; }
+.mentor-head{
+  display:flex; align-items:center; gap:12px;
+}
+.mentor-ava{
+  flex:none;
+  width:56px; height:56px;
+  border-radius:50%;
+  background:#bae6fd;
+  display:grid; place-items:center;
+  border:3px solid #fff;
+  box-shadow: var(--shadow-1);
+}
+.mentor-ava svg{ width:34px; height:34px; color:#075985; }
+.mentor-name{ font-weight:800; font-size:1.05rem; color:#334155; }
+.mentor-role{ font-size:.78rem; color: var(--ink-mute); }
+.speech{
+  margin-top:12px;
+  position:relative;
+  background: var(--brand-tint);
+  border: 1px solid var(--brand-line);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  font-size:.92rem;
+  color:#0c4a6e;
+}
+.speech::before{
+  content:"";
+  position:absolute; top:-8px; left:22px;
+  width:14px; height:14px;
+  background: var(--brand-tint);
+  border-left:1px solid var(--brand-line);
+  border-top:1px solid var(--brand-line);
+  transform: rotate(45deg);
+}
+.speech strong{ color:#075985; }
+.speech[data-tone="ng"]{ background:#fef2f2; border-color:#fca5a5; color:#7f1d1d; }
+.speech[data-tone="ng"]::before{ background:#fef2f2; border-color:#fca5a5; }
+.speech[data-tone="ok"]{ background:#f0fdf4; border-color:#86efac; color:#14532d; }
+.speech[data-tone="ok"]::before{ background:#f0fdf4; border-color:#86efac; }
+
+/* --- 道具箱 --- */
+.toolbox{ padding: 14px 16px 16px; }
+.toolbox-title{
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+  margin:0 0 4px;
+  font-size:.95rem; font-weight:800; color:#334155;
+}
+.toolbox-hint{
+  margin:0 0 10px;
+  font-size:.78rem; color: var(--ink-mute); line-height:1.5;
+}
+.tags{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap:10px;
+}
+.tag{
+  position: relative;
+  -webkit-appearance:none; appearance:none;
+  min-height: 62px;
+  padding: 10px 8px;
+  border: 2px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  cursor: grab;
+  text-align:center;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  user-select:none; -webkit-user-select:none;
+  touch-action: none;                 /* ドラッグ中にページが動かないように */
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background-color .12s ease;
+}
+.tag:hover{ border-color: var(--brand-line); }
+.tag:active{ cursor: grabbing; transform: scale(.97); }
+.tag-name{ font-weight:800; line-height:1.2; }
+.tag code{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size:.75rem; color: var(--ink-mute);
+}
+.tag[data-tag="h1"] .tag-name{ color: var(--h1c); font-size:1.15rem; }
+.tag[data-tag="h2"] .tag-name{ color: var(--h2c); font-size:1.05rem; }
+.tag[data-tag="h3"] .tag-name{ color: var(--h3c); font-size:.98rem; }
+.tag[data-tag="p"]  .tag-name{ color: var(--pc);  font-size:.92rem; }
+.tag[aria-pressed="true"]{
+  border-color: var(--brand);
+  background: var(--brand-tint);
+  box-shadow: 0 0 0 3px rgba(3,105,161,.18), var(--shadow-2);
+}
+.tag[aria-pressed="true"]::after{
+  content:"選択中";
+  position:absolute; top:-9px; right:-5px;
+  font-size:.66rem; font-weight:800; color:#fff;
+  background: var(--brand);
+  border-radius: 999px;
+  padding: 1px 8px;
+  box-shadow: var(--shadow-1);
+}
+
+/* ---------- 右カラム ---------- */
+.stage{ min-width:0; display:flex; flex-direction:column; gap:14px; }
+.stage-head{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; flex-wrap:wrap;
+  padding: 12px 16px;
+}
+.stage-head h2{ margin:0; font-size:1rem; font-weight:800; color:#334155; }
+.progress{
+  display:flex; align-items:center; gap:10px;
+  font-size:.85rem; color: var(--ink-soft); font-weight:700;
+}
+.progress-bar{
+  display:inline-block;
+  width: 120px; height: 8px; border-radius:999px;
+  background: var(--line-soft); overflow:hidden;
+}
+.progress-fill{
+  display:block;
+  height:100%; width:0%;
+  background: var(--brand);
+  border-radius:999px;
+  transition: width .25s ease;
+}
+
+.doc{
+  padding: clamp(12px, 1.6vw, 20px);
+  display:flex; flex-direction:column; gap:10px;
+  background: var(--surface-2);
+}
+
+/* --- 文書ブロック --- */
+.block{ position:relative; }
+.block-btn{
+  -webkit-appearance:none; appearance:none;
+  display:block; width:100%;
+  text-align:left;
+  background: var(--surface);
+  border: 2px dashed var(--line);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  min-height: 56px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  user-select:none; -webkit-user-select:none;
+  box-shadow: var(--shadow-1);
+  transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease, transform .1s ease;
+}
+.block-btn:hover{ border-color: var(--brand-line); }
+.block-btn:active{ transform: scale(.995); }
+.block-chip{
+  display:none;
+  width:fit-content;
+  margin-bottom:6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--line-soft);
+  color: #334155;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size:.72rem; font-weight:700;
+  line-height:1.7;
+}
+.block-text{ display:block; }
+
+/* タグ適用後 */
+.block[data-tag] .block-btn{ border-style: solid; border-color:#94a3b8; padding-right: 52px; }
+.block[data-tag] .block-chip{ display:block; }
+.block[data-tag="h1"] .block-text{ font-size: clamp(1.5rem,1.25rem+1vw,2.1rem); font-weight:800; line-height:1.35; color:#1e1b4b; }
+.block[data-tag="h2"] .block-text{ font-size: clamp(1.25rem,1.1rem+.7vw,1.7rem); font-weight:700; line-height:1.4;  color:#1e293b; }
+.block[data-tag="h3"] .block-text{ font-size: clamp(1.1rem,1.02rem+.4vw,1.35rem); font-weight:700; line-height:1.45; color:#1e293b; }
+.block[data-tag="p"]  .block-text{ font-size:1rem; font-weight:400; }
+.block[data-tag="h1"] .block-chip{ background:#ede9fe; color:#5b21b6; }
+.block[data-tag="h2"] .block-chip{ background:#dbeafe; color:#1e40af; }
+.block[data-tag="h3"] .block-chip{ background:#ccfbf1; color:#115e59; }
+.block[data-tag="p"]  .block-chip{ background: var(--line-soft); color:#334155; }
+
+/* ドラッグ／選択のフィードバック */
+.block.is-over .block-btn{
+  border-color: var(--brand);
+  background: var(--brand-tint);
+  box-shadow: 0 0 0 4px rgba(3,105,161,.15);
+}
+body.is-picking .block-btn{ border-color: var(--brand-line); background:#fbfeff; }
+.block.is-error .block-btn{
+  border-color: var(--ng);
+  background:#fef2f2;
+  box-shadow: 0 0 0 3px rgba(185,28,28,.12);
+}
+
+/* 個別クリアボタン */
+.block-clear{
+  position:absolute; top:6px; right:6px;
+  width:32px; height:32px;
+  display:none; place-items:center;
+  border:1px solid var(--line);
+  border-radius:50%;
+  background:#fff;
+  color: var(--ink-soft);
+  font-size:1rem; line-height:1;
+  cursor:pointer;
+}
+.block-clear:hover{ background:#fee2e2; border-color:#fca5a5; color:#991b1b; }
+.block[data-tag] .block-clear{ display:grid; }
+
+/* --- 操作ボタン --- */
+.actions{
+  display:flex; flex-wrap:wrap; gap:10px; justify-content:center;
+  padding-bottom: 4px;
+}
+.btn{
+  -webkit-appearance:none; appearance:none;
+  min-height: var(--tap);
+  padding: 10px 26px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  font-weight:800;
+  cursor:pointer;
+  box-shadow: var(--shadow-1);
+  transition: transform .12s ease, background-color .12s ease, box-shadow .12s ease;
+}
+.btn:hover{ transform: translateY(-1px); box-shadow: var(--shadow-2); }
+.btn:active{ transform: translateY(0); }
+.btn-primary{ background: var(--brand); color:#fff; font-size:1.05rem; padding-inline:32px; }
+.btn-primary:hover{ background: var(--brand-dark); }
+.btn-ghost{ background:#fff; color: var(--ink-soft); border-color: var(--line); }
+.btn-ghost:hover{ background:#f1f5f9; }
+
+/* ---------- モバイル／iPad縦：道具箱を下部バーに ---------- */
+@media (max-width: 819px){
+  .toolbox{
+    position: fixed;
+    left:0; right:0; bottom:0;
+    z-index: 40;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    border: 1px solid var(--line-soft);
+    border-bottom: none;
+    box-shadow: 0 -6px 24px rgba(15,23,42,.14);
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: rgba(255,255,255,.97);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  .toolbox-hint{ display:none; }
+  .toolbox-title{ margin-bottom:6px; font-size:.82rem; }
+  .tags{ grid-template-columns: repeat(4, minmax(0,1fr)); gap:8px; }
+  .tag{ padding:8px 4px; }
+  .tag[aria-pressed="true"]::after{ padding:0 7px; font-size:.6rem; top:-7px; right:-4px; }
+}
+
+/* ---------- ドラッグ中のゴースト ---------- */
+.ghost{
+  position: fixed;                 /* ← 画面座標に追従（スクロールしてもズレない） */
+  z-index: 1000;
+  pointer-events:none;
+  opacity:.92;
+  transform: translate(-50%,-50%) scale(1.04);
+  transition:none;
+  box-shadow: var(--shadow-3);
+}
+
+/* ---------- モーダル ---------- */
+.modal[hidden]{ display:none; }
+.modal{
+  position:fixed; inset:0; z-index:100;
+  background: rgba(15,23,42,.6);
+  display:grid; place-items:center;
+  padding: 16px;
+  overscroll-behavior: contain;
+}
+.modal-panel{
+  background:#fff;
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-3);
+  width:min(640px, 100%);
+  max-height: min(86vh, 760px);
+  max-height: min(86dvh, 760px);
+  overflow-y:auto;
+  padding: clamp(20px, 3vw, 32px);
+  text-align:center;
+  animation: pop .22s ease-out;
+}
+@keyframes pop{ from{ opacity:0; transform: scale(.96) } to{ opacity:1; transform:none } }
+.modal-title{ margin:0 0 10px; font-size: clamp(1.5rem,1.2rem+1vw,2rem); font-weight:800; }
+.modal-title[data-state="ok"]{ color: var(--ok); }
+.modal-title[data-state="ng"]{ color: var(--ng); }
+.modal-lead{ margin:0 0 18px; color: var(--ink-soft); }
+.modal-outline{
+  text-align:left;
+  background: var(--surface-2);
+  border:1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  padding:14px;
+  margin-bottom:18px;
+}
+.modal-outline[hidden]{ display:none; }
+.modal-outline ul{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+.modal-outline li{
+  padding:6px 10px; border-radius: var(--r-sm);
+  font-weight:700; color:#334155; background:#fff;
+  border:1px solid var(--line-soft);
+}
+.modal-outline li[data-lv="2"]{ margin-left:22px; }
+.modal-outline li[data-lv="3"]{ margin-left:44px; }
+.modal-outline li[data-goal="1"]{
+  background:#e0f2fe; border-color: var(--brand);
+  box-shadow: 0 0 0 2px rgba(3,105,161,.2);
+}
+.goal-badge{ margin-left:8px; font-size:.72rem; font-weight:800; color:#075985; }
+.modal-note{
+  text-align:left;
+  background:#fef3c7; color:#78350f;
+  border-radius: var(--r-md);
+  padding:14px;
+  font-size:.9rem;
+  margin:0 0 22px;
+}
+.modal-actions{
+  position: sticky;
+  bottom: calc(-1 * clamp(20px, 3vw, 32px));
+  background: #fff;
+  padding: 6px 0 clamp(20px, 3vw, 32px);
+  margin-bottom: calc(-1 * clamp(20px, 3vw, 32px));
+}
+.modal-note code{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background:#fde68a; border-radius:4px; padding:0 4px;
+}
+
+/* ---------- ユーティリティ ---------- */
+.visually-hidden{
+  position:absolute!important; width:1px; height:1px;
+  margin:-1px; padding:0; overflow:hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space:nowrap; border:0;
+}
+kbd{
+  font-family: inherit; font-size:.78em; font-weight:700;
+  background:#fff; border:1px solid var(--line);
+  border-bottom-width:2px; border-radius:5px;
+  padding:0 5px;
+}
+</style>
 </head>
-<body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen p-4">
+<body>
 
-    <div class="w-full max-w-7xl mx-auto bg-white rounded-2xl shadow-2xl p-4 sm:p-8 overflow-hidden">
-        <header class="text-center mb-6">
-            <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-700">ウェブ探検家と情報の羅針盤</h1>
-            <p class="text-slate-500 mt-2">見出しタグを正しく配置して、情報の探検家をゴールに導こう！</p>
-        </header>
+<div class="page">
 
-        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+  <header class="pagehead">
+    <h1>ウェブ探検家と情報の羅針盤</h1>
+    <p>見出しタグを正しく配置して、情報の探検家をゴールに導こう！</p>
+  </header>
 
-            <!-- Left Panel: Character & Tags -->
-            <aside class="lg:col-span-1 bg-slate-50 p-6 rounded-xl border border-slate-200">
-                <div id="character-area" class="text-center">
-                    <!-- Character Image -->
-                    <div class="w-32 h-32 mx-auto bg-sky-200 rounded-full flex items-center justify-center border-4 border-white shadow-lg mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 text-sky-600" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10s10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88a9.947 9.947 0 0 1 12.28 0C16.43 19.18 14.03 20 12 20z"/></svg>
-                    </div>
-                    <h2 class="text-xl font-bold text-slate-700">ベテラン学者</h2>
-                    <div id="dialogue-box" class="mt-2 bg-white p-4 rounded-lg shadow-inner text-sm text-slate-600 h-32 overflow-y-auto">
-                        やあ、探検家くん。この膨大な報告書の中から<strong class="text-sky-600">「古代遺跡の発見」</strong>に関する部分だけをすぐに見つけたいんだ。見出しを付けて整理してくれないか？
-                    </div>
-                </div>
+  <div class="layout">
 
-                <div class="mt-8">
-                    <h3 class="font-bold text-center text-slate-600 mb-4">タグの道具箱</h3>
-                    <div id="tag-toolbox" class="grid grid-cols-2 gap-4">
-                        <!-- draggable="true" はPCのマウス操作のために残します -->
-                        <div class="tag bg-white p-4 rounded-lg shadow-md text-center" draggable="true" data-tag="h1">
-                            <span class="font-bold text-2xl text-violet-600">見出し1</span>
-                            <code class="block text-sm text-slate-500">&lt;h1&gt;</code>
-                        </div>
-                        <div class="tag bg-white p-4 rounded-lg shadow-md text-center" draggable="true" data-tag="h2">
-                            <span class="font-bold text-xl text-blue-600">見出し2</span>
-                            <code class="block text-sm text-slate-500">&lt;h2&gt;</code>
-                        </div>
-                        <div class="tag bg-white p-4 rounded-lg shadow-md text-center" draggable="true" data-tag="h3">
-                            <span class="font-bold text-lg text-teal-600">見出し3</span>
-                            <code class="block text-sm text-slate-500">&lt;h3&gt;</code>
-                        </div>
-                        <div class="tag bg-white p-4 rounded-lg shadow-md text-center" draggable="true" data-tag="p">
-                            <span class="font-bold text-base text-slate-600">段落</span>
-                            <code class="block text-sm text-slate-500">&lt;p&gt;</code>
-                        </div>
-                    </div>
-                </div>
-            </aside>
+    <!-- ============ 左カラム（PCでは固定表示） ============ -->
+    <div class="rail">
 
-            <!-- Right Panel: Content & Controls -->
-            <div class="lg:col-span-2">
-                <div id="content-area" class="bg-slate-50 p-6 sm:p-8 rounded-xl border border-slate-200 space-y-4">
-                    <!-- Drop targets will be dynamically generated here -->
-                </div>
-                <div class="mt-6 flex justify-center items-center gap-4">
-                    <button id="check-button" class="bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transition-transform transform hover:scale-105">
-                        ナビゲート開始！
-                    </button>
-                    <button id="reset-button" class="bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded-full transition-transform transform hover:scale-105">
-                        リセット
-                    </button>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Feedback Modal -->
-    <div id="feedback-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
-        <div class="feedback-modal bg-white rounded-2xl shadow-xl w-full max-w-2xl p-8 text-center relative">
-            <h2 id="modal-title" class="text-3xl font-extrabold mb-4"></h2>
-            <div id="modal-content" class="text-slate-600 mb-6"></div>
-             <!-- Outline will be generated here -->
-            <div id="modal-outline" class="mb-6 text-left p-4 bg-slate-100 rounded-lg max-h-60 overflow-y-auto"></div>
-            <p id="modal-explanation" class="text-sm bg-amber-100 text-amber-800 p-4 rounded-lg"></p>
-            <button id="modal-close-button" class="mt-8 bg-sky-500 hover:bg-sky-600 text-white font-bold py-2 px-8 rounded-full text-lg shadow-lg transition-transform transform hover:scale-105">
-                OK
-            </button>
+      <section class="card mentor" aria-labelledby="mentor-name">
+        <div class="mentor-head">
+          <div class="mentor-ava" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10s10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88a9.947 9.947 0 0 1 12.28 0C16.43 19.18 14.03 20 12 20z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="mentor-name" id="mentor-name">ベテラン学者</div>
+            <div class="mentor-role">依頼人</div>
+          </div>
         </div>
+        <p class="speech" id="speech" role="status"></p>
+      </section>
+
+      <section class="card toolbox" aria-labelledby="toolbox-title">
+        <h2 class="toolbox-title" id="toolbox-title">
+          タグの道具箱
+        </h2>
+        <p class="toolbox-hint">
+          タグを選んでから文をタップ、またはドラッグして重ねます。<br>
+          キーボードなら <kbd>Tab</kbd> で移動、<kbd>Enter</kbd> で決定、<kbd>1</kbd>〜<kbd>4</kbd> で直接指定できます。
+        </p>
+        <div class="tags" id="tags" role="group" aria-label="タグの道具箱">
+          <button type="button" class="tag" data-tag="h1" aria-pressed="false">
+            <span class="tag-name">見出し1</span><code>&lt;h1&gt;</code>
+          </button>
+          <button type="button" class="tag" data-tag="h2" aria-pressed="false">
+            <span class="tag-name">見出し2</span><code>&lt;h2&gt;</code>
+          </button>
+          <button type="button" class="tag" data-tag="h3" aria-pressed="false">
+            <span class="tag-name">見出し3</span><code>&lt;h3&gt;</code>
+          </button>
+          <button type="button" class="tag" data-tag="p" aria-pressed="false">
+            <span class="tag-name">段落</span><code>&lt;p&gt;</code>
+          </button>
+        </div>
+      </section>
+
     </div>
+
+    <!-- ============ 右カラム ============ -->
+    <div class="stage">
+
+      <div class="card stage-head">
+        <h2>調査報告書</h2>
+        <div class="progress">
+          <span id="progress-text">0 / 0 個</span>
+          <span class="progress-bar" aria-hidden="true"><span class="progress-fill" id="progress-fill"></span></span>
+        </div>
+      </div>
+
+      <div class="card doc" id="doc"></div>
+
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="check">ナビゲート開始！</button>
+        <button type="button" class="btn btn-ghost" id="reset">リセット</button>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ フィードバック ============ -->
+<div class="modal" id="modal" hidden>
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
+    <h2 class="modal-title" id="modal-title"></h2>
+    <p class="modal-lead" id="modal-lead"></p>
+    <div class="modal-outline" id="modal-outline"></div>
+    <p class="modal-note" id="modal-note"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" id="modal-close">OK</button>
+    </div>
+  </div>
+</div>
+
+<p class="visually-hidden" id="live" role="status" aria-live="polite"></p>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+(() => {
+  'use strict';
 
-    // --- DOM Elements ---
-    const tagToolbox = document.getElementById('tag-toolbox');
-    const contentArea = document.getElementById('content-area');
-    const checkButton = document.getElementById('check-button');
-    const resetButton = document.getElementById('reset-button');
-    const dialogueBox = document.getElementById('dialogue-box');
+  /* =======================================================
+     1. データ
+     ======================================================= */
+  const LEVEL = {
+    goalText: '古代遺跡の発見',
+    talk: {
+      start:      'やあ、探検家くん。この膨大な報告書の中から<strong>「古代遺跡の発見」</strong>に関する部分だけをすぐに見つけたいんだ。見出しを付けて整理してくれないか？',
+      empty:      'まだ何も整理されていないね。まずは<strong>タグを選んで</strong>、文にあてはめてみよう。',
+      incomplete: 'おっと、まだタグの付いていない部分が<strong>{n}か所</strong>あるよ。すべての文に役割を決めてあげよう。',
+      allP:       'うーん、これだと全部が同じ扱いで、どこに何が書いてあるか一目でわからないな……。これでは最初から全部読まないと目的の場所が見つからないよ。',
+      noH1:       '報告書全体のタイトルがないと、何についての文章か分からないな。<strong>一番大きな見出し（h1）</strong>が一つ必要だ。',
+      multiH1:    '<strong>一番大きな見出し（h1）</strong>は、ふつう1ページに一つだけなんだ。どれが本当のタイトルか分からなくなってしまうよ。',
+      skip:       'おっと、見出しのレベルを飛ばしてしまったようだね。<strong>h1の次はh2</strong>、と順番に使うのが自然な流れだよ。',
+      longHead:   'これは長い文章だね。<strong>見出しは短い「名前」</strong>で、説明の本文は<strong>段落（p）</strong>にするのがルールだよ。',
+      goalNotHead:'目的の<strong>「古代遺跡の発見」</strong>が見出しになっていないよ。段落のままだと目次に出てこないから、ジャンプできないんだ。',
+      success:    '素晴らしい！この目次のおかげで<strong>「古代遺跡の発見」</strong>にすぐジャンプできる！ありがとう！'
+    },
+    blocks: [
+      { text: '巨大遺跡群に関する総合報告書', answer: 'h1' },
+      { text: '調査の背景', answer: 'h2' },
+      { text: '長年にわたり、この地域の歴史は謎に包まれていました。我々は最新技術を駆使し、包括的な地理調査を開始しました。', answer: 'p' },
+      { text: '調査結果', answer: 'h2' },
+      { text: '古代遺跡の発見', answer: 'h3' },
+      { text: 'チームは、山岳地帯でこれまで知られていなかった巨大な石造りの遺跡を発見しました。これは歴史を塗り替える大発見です。', answer: 'p' },
+      { text: '出土品について', answer: 'h3' },
+      { text: '遺跡からは、生活様式を示す多数の土器片や、宗教儀式に使われたと思われる精巧な装飾品が出土しています。', answer: 'p' }
+    ]
+  };
 
-    const modal = document.getElementById('feedback-modal');
-    const modalTitle = document.getElementById('modal-title');
-    const modalContent = document.getElementById('modal-content');
-    const modalOutline = document.getElementById('modal-outline');
-    const modalExplanation = document.getElementById('modal-explanation');
-    const modalCloseButton = document.getElementById('modal-close-button');
+  const TAG_LABEL = { h1: '見出し1', h2: '見出し2', h3: '見出し3', p: '段落' };
+  const TAG_ORDER = ['h1', 'h2', 'h3', 'p'];
+  const LONG_TEXT = 40;   // これより長い文を見出しにしたら注意
 
-    // --- Game Data ---
-    const level1 = {
-        targetText: "古代遺跡の発見",
-        dialogue: {
-            start: `やあ、探検家くん。この膨大な報告書の中から<strong class="text-sky-600">「古代遺跡の発見」</strong>に関する部分だけをすぐに見つけたいんだ。見出しを付けて整理してくれないか？`,
-            allParagraphs: `うーん、これだと全部が同じ扱いで、どこに何が書いてあるか一目でわからないな...。これでは最初から全部読まないと目的の場所が見つからないよ。`,
-            levelSkip: `おっと、見出しのレベルを飛ばしてしまったようだね。<strong class="text-sky-600">h1の次にはh2</strong>が来るのが自然な流れだよ。`,
-            noH1: `報告書全体のタイトルがないと、何についての文章か分からないな。<strong class="text-sky-600">一番大きな見出し(h1)</strong>が一つ必要だ。`,
-            multipleH1: `<strong class="text-sky-600">一番大きな見出し(h1)</strong>は、普通1ページに一つだけなんだ。どれが本当のタイトルか分からなくなってしまうよ。`,
-            success: `素晴らしい！この目次のおかげで<strong class="text-sky-600">「古代遺跡の発見」</strong>にすぐジャンプできる！ありがとう！`
-        },
-        content: [
-            { id: 0, text: "巨大遺跡群に関する総合報告書", correctTag: 'h1' },
-            { id: 1, text: "調査の背景", correctTag: 'h2' },
-            { id: 2, text: "長年にわたり、この地域の歴史は謎に包まれていました。我々は最新技術を駆使し、包括的な地理調査を開始しました。", correctTag: 'p' },
-            { id: 3, text: "調査結果", correctTag: 'h2' },
-            { id: 4, text: "古代遺跡の発見", correctTag: 'h3' },
-            { id: 5, text: "チームは、山岳地帯でこれまで知られていなかった巨大な石造りの遺跡を発見しました。これは歴史を塗り替える大発見です。", correctTag: 'p' },
-            { id: 6, text: "出土品について", correctTag: 'h3' },
-            { id: 7, text: "遺跡からは、生活様式を示す多数の土器片や、宗教儀式に使われたと思われる精巧な装飾品が出土しています。", correctTag: 'p' },
-        ]
+  /* =======================================================
+     2. 要素の取得
+     ======================================================= */
+  const $  = (id) => document.getElementById(id);
+  const doc          = $('doc');
+  const tagGroup     = $('tags');
+  const speech       = $('speech');
+  const live         = $('live');
+  const progressText = $('progress-text');
+  const progressFill = $('progress-fill');
+  const modal        = $('modal');
+  const modalPanel   = modal.querySelector('.modal-panel');
+
+  const tagButtons = [...tagGroup.querySelectorAll('.tag')];
+  let blocks = [];             // { el, btn, text, answer }
+  let selectedTag = null;      // タップ配置モードで選択中のタグ
+  let lastFocused = null;      // モーダルを開く前のフォーカス
+
+  /* =======================================================
+     3. 画面の組み立て
+     ======================================================= */
+  function build() {
+    doc.innerHTML = '';
+    blocks = LEVEL.blocks.map((item, i) => {
+      const el = document.createElement('div');
+      el.className = 'block';
+      el.dataset.index = String(i);
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'block-btn';
+      btn.innerHTML =
+        '<span class="block-chip" aria-hidden="true"></span>' +
+        '<span class="block-text"></span>';
+      btn.querySelector('.block-text').textContent = item.text;
+      updateBtnLabel(btn, item.text, null);
+
+      const clear = document.createElement('button');
+      clear.type = 'button';
+      clear.className = 'block-clear';
+      clear.innerHTML = '<span aria-hidden="true">×</span>';
+      clear.setAttribute('aria-label', `「${short(item.text)}」のタグを外す`);
+
+      el.append(btn, clear);
+      doc.appendChild(el);
+      return { el, btn, clear, text: item.text, answer: item.answer };
+    });
+    resetAll();
+  }
+
+  const short = (t) => (t.length > 14 ? t.slice(0, 14) + '…' : t);
+
+  function updateBtnLabel(btn, text, tag) {
+    btn.setAttribute('aria-label',
+      tag ? `${short(text)} — 現在 ${TAG_LABEL[tag]}。変更するにはタグを選んで決定`
+          : `${short(text)} — タグ未設定。タグを選んで決定`);
+  }
+
+  /* =======================================================
+     4. タグの適用
+     ======================================================= */
+  function applyTag(block, tag, announce = true) {
+    block.el.dataset.tag = tag;
+    block.el.classList.remove('is-error');
+    block.el.querySelector('.block-chip').textContent = `<${tag}>`;
+    updateBtnLabel(block.btn, block.text, tag);
+    if (announce) say(`${TAG_LABEL[tag]} を「${short(block.text)}」に設定しました`);
+    updateProgress();
+  }
+
+  function clearTag(block, announce = true) {
+    if (!block.el.dataset.tag) return;
+    delete block.el.dataset.tag;
+    block.el.classList.remove('is-error');
+    block.el.querySelector('.block-chip').textContent = '';
+    updateBtnLabel(block.btn, block.text, null);
+    if (announce) say(`「${short(block.text)}」のタグを外しました`);
+    updateProgress();
+  }
+
+  function resetAll() {
+    blocks.forEach((b) => clearTag(b, false));
+    selectTag(null);
+    talk(LEVEL.talk.start, 'neutral');
+    updateProgress();
+  }
+
+  function updateProgress() {
+    const done = blocks.filter((b) => b.el.dataset.tag).length;
+    progressText.textContent = `${done} / ${blocks.length} 個`;
+    progressFill.style.width = `${(done / blocks.length) * 100}%`;
+  }
+
+  function talk(html, tone) {
+    speech.innerHTML = html;
+    speech.dataset.tone = tone === 'ok' ? 'ok' : tone === 'ng' ? 'ng' : '';
+  }
+
+  function say(msg) { live.textContent = msg; }
+
+  /* =======================================================
+     5. タグの選択（タップ配置モード）
+     ======================================================= */
+  function selectTag(tag) {
+    selectedTag = tag;
+    tagButtons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tag === tag)));
+    document.body.classList.toggle('is-picking', Boolean(tag));
+    if (tag) say(`${TAG_LABEL[tag]} を選びました。置きたい文を選んでください`);
+  }
+
+  tagButtons.forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      if (e.detail === 0 || !suppressClick) {   // キーボード操作 or 通常クリック
+        selectTag(selectedTag === btn.dataset.tag ? null : btn.dataset.tag);
+      }
+      suppressClick = false;
+    });
+  });
+
+  /* =======================================================
+     6. ブロック側の操作（クリック／キーボード）
+     ======================================================= */
+  doc.addEventListener('click', (e) => {
+    const clearBtn = e.target.closest('.block-clear');
+    if (clearBtn) {
+      clearTag(blocks[+clearBtn.closest('.block').dataset.index]);
+      return;
+    }
+    const btn = e.target.closest('.block-btn');
+    if (!btn) return;
+    const block = blocks[+btn.closest('.block').dataset.index];
+    if (selectedTag) {
+      applyTag(block, selectedTag);
+    } else {
+      say('先に道具箱からタグを選んでください');
+      talk('まずは左（下）の道具箱から<strong>タグを選んで</strong>ね。', 'neutral');
+      tagButtons[0].focus();
+    }
+  });
+
+  // 数字キーで直接指定 / Backspace で解除
+  doc.addEventListener('keydown', (e) => {
+    const btn = e.target.closest('.block-btn');
+    if (!btn) return;
+    const block = blocks[+btn.closest('.block').dataset.index];
+    const idx = ['1', '2', '3', '4'].indexOf(e.key);
+    if (idx > -1) { e.preventDefault(); applyTag(block, TAG_ORDER[idx]); }
+    else if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); clearTag(block); }
+  });
+
+  /* =======================================================
+     7. ドラッグ＆ドロップ（Pointer Events で統一）
+        マウス・タッチ・Apple Pencil を1つの経路で処理する
+     ======================================================= */
+  const DRAG_THRESHOLD = 8;      // これ以上動いたらドラッグ開始（それ以下はタップ扱い）
+  const EDGE = 90;               // 画面端の自動スクロール領域
+  let drag = null;               // { tag, ghost, startX, startY, x, y, active }
+  let suppressClick = false;     // ドラッグ後の click を無視するため
+  let overBlock = null;
+  let autoScrollId = 0;
+
+  tagButtons.forEach((btn) => {
+    btn.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      btn.setPointerCapture(e.pointerId);
+      drag = {
+        tag: btn.dataset.tag, source: btn,
+        startX: e.clientX, startY: e.clientY,
+        x: e.clientX, y: e.clientY,
+        active: false, ghost: null, pointerId: e.pointerId
+      };
+    });
+
+    btn.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      drag.x = e.clientX; drag.y = e.clientY;
+
+      if (!drag.active) {
+        const moved = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+        if (moved < DRAG_THRESHOLD) return;
+        startDrag();
+      }
+      e.preventDefault();
+      moveGhost();
+      highlight(findBlockAt(drag.x, drag.y));
+    });
+
+    btn.addEventListener('pointerup', endPointer);
+    btn.addEventListener('pointercancel', endPointer);
+  });
+
+  function startDrag() {
+    drag.active = true;
+    const g = drag.source.cloneNode(true);
+    g.classList.add('ghost');
+    g.removeAttribute('aria-pressed');
+    const r = drag.source.getBoundingClientRect();
+    g.style.width = `${r.width}px`;
+    g.style.height = `${r.height}px`;
+    document.body.appendChild(g);
+    drag.ghost = g;
+    document.body.classList.add('is-picking');
+    moveGhost();
+    startAutoScroll();
+  }
+
+  function moveGhost() {
+    if (!drag?.ghost) return;
+    drag.ghost.style.left = `${drag.x}px`;
+    drag.ghost.style.top  = `${drag.y}px`;
+  }
+
+  function findBlockAt(x, y) {
+    for (const b of blocks) {
+      const r = b.el.getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return b;
+    }
+    return null;
+  }
+
+  function highlight(block) {
+    if (overBlock === block) return;
+    overBlock?.el.classList.remove('is-over');
+    overBlock = block;
+    overBlock?.el.classList.add('is-over');
+  }
+
+  function endPointer(e) {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+
+    if (drag.active) {
+      const target = findBlockAt(e.clientX, e.clientY);
+      if (target) applyTag(target, drag.tag);
+      suppressClick = true;               // 直後の click（選択トグル）を抑制
+      setTimeout(() => { suppressClick = false; }, 0);
+    } else {
+      // 動かさずに離した＝タップ。click ハンドラで選択を切り替える
+      suppressClick = false;
+    }
+    cleanupDrag();
+  }
+
+  function cleanupDrag() {
+    stopAutoScroll();
+    drag?.ghost?.remove();
+    highlight(null);
+    document.body.classList.toggle('is-picking', Boolean(selectedTag));
+    drag = null;
+  }
+
+  /* 画面端まで運んだら自動スクロール（長い文書でも届く） */
+  function startAutoScroll() {
+    stopAutoScroll();
+    const step = () => {
+      if (!drag?.active) return;
+      const h = window.innerHeight;
+      let dy = 0;
+      if (drag.y < EDGE)          dy = -Math.ceil((EDGE - drag.y) / 6);
+      else if (drag.y > h - EDGE) dy =  Math.ceil((drag.y - (h - EDGE)) / 6);
+      if (dy) {
+        window.scrollBy(0, dy);
+        highlight(findBlockAt(drag.x, drag.y));
+      }
+      autoScrollId = requestAnimationFrame(step);
     };
+    autoScrollId = requestAnimationFrame(step);
+  }
+  function stopAutoScroll() { cancelAnimationFrame(autoScrollId); autoScrollId = 0; }
 
-    // --- Drag State Variables ---
-    let draggedTag = null;
-    let ghostElement = null; // タッチ操作用のゴースト要素
-    let currentDropTarget = null; // 現在タッチホバー中のターゲット
-    let dropTargets = []; // ドロップ先要素の配列 (タッチ操作の最適化用)
+  /* =======================================================
+     8. 判定
+     ======================================================= */
+  $('check').addEventListener('click', check);
+  $('reset').addEventListener('click', () => { resetAll(); say('リセットしました'); });
 
-    // --- Functions ---
-    
-    /**
-     * Loads the level content into the content area.
-     */
-    function loadLevel(level) {
-        contentArea.innerHTML = '';
-        dialogueBox.innerHTML = level.dialogue.start;
-        level.content.forEach(item => {
-            const div = document.createElement('div');
-            div.id = `content-${item.id}`;
-            div.className = 'drop-target p-4 rounded-lg bg-white shadow';
-            div.textContent = item.text;
-            div.dataset.correctTag = item.correctTag;
-            contentArea.appendChild(div);
-        });
-        addDropListeners();
+  function markError(list) {
+    blocks.forEach((b) => b.el.classList.remove('is-error'));
+    list.forEach((b) => b.el.classList.add('is-error'));
+    list[0]?.el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
+  function check() {
+    blocks.forEach((b) => b.el.classList.remove('is-error'));
+    const tagged = blocks.filter((b) => b.el.dataset.tag);
+
+    // (1) 未着手
+    if (tagged.length === 0) return fail(LEVEL.talk.empty, []);
+
+    // (2) 途中
+    if (tagged.length < blocks.length) {
+      const rest = blocks.filter((b) => !b.el.dataset.tag);
+      return fail(LEVEL.talk.incomplete.replace('{n}', String(rest.length)), rest);
     }
 
-    /**
-     * Resets all tags from the content area.
-     */
-    function resetLevel() {
-        const targets = contentArea.querySelectorAll('.drop-target');
-        targets.forEach(target => {
-            // スタイルクラスをリセット
-            const classesToRemove = ['h1-style', 'h2-style', 'h3-style', 'p-style', 'tagged'];
-            target.classList.remove(...classesToRemove);
-            // 基本クラスを再設定
-            target.className = 'drop-target p-4 rounded-lg bg-white shadow';
-            target.removeAttribute('data-tag');
-            target.removeAttribute('data-tag-display');
-        });
-        dialogueBox.innerHTML = level1.dialogue.start;
+    const tagOf = (b) => b.el.dataset.tag;
+    const heads = blocks.filter((b) => tagOf(b) !== 'p');
+
+    // (3) 全部が段落
+    if (heads.length === 0) return fail(LEVEL.talk.allP, []);
+
+    // (4) 長い文を見出しにしている
+    const longHeads = heads.filter((b) => b.text.length > LONG_TEXT);
+    if (longHeads.length) return fail(LEVEL.talk.longHead, longHeads);
+
+    // (5) h1 の数
+    const h1s = blocks.filter((b) => tagOf(b) === 'h1');
+    if (h1s.length === 0) return fail(LEVEL.talk.noH1, []);
+    if (h1s.length > 1)   return fail(LEVEL.talk.multiH1, h1s);
+
+    // (6) レベル飛ばし
+    let last = 0;
+    for (const b of blocks) {
+      const t = tagOf(b);
+      if (t === 'p') continue;
+      const lv = Number(t[1]);
+      if (lv > last + 1) return fail(LEVEL.talk.skip, [b]);
+      last = lv;
     }
 
-    // --- Drag and Drop Logic ---
+    // (7) 目的地が見出しになっているか
+    const goal = blocks.find((b) => b.text === LEVEL.goalText);
+    if (goal && tagOf(goal) === 'p') return fail(LEVEL.talk.goalNotHead, [goal]);
 
-    // --- Mouse Drag Events (Desktop) ---
-    // PCでのマウス操作用（変更なし）
-    tagToolbox.addEventListener('dragstart', (e) => {
-        const tagElement = e.target.closest('.tag');
-        if (tagElement) {
-            draggedTag = tagElement.dataset.tag;
-            e.dataTransfer.setData('text/plain', draggedTag);
-            e.target.style.opacity = '0.5';
-        }
+    succeed();
+  }
+
+  function fail(message, errorBlocks) {
+    talk(message, 'ng');
+    if (errorBlocks.length) markError(errorBlocks);
+    openModal({
+      state: 'ng',
+      title: 'おしい！',
+      lead: '探検家は目的の情報にたどり着けませんでした。',
+      outlineHTML: null,
+      note: '<strong>ヒント：</strong>見出しは文書の骨組みです。<code>&lt;h1&gt;</code> を頂点に、<code>&lt;h2&gt;</code>、<code>&lt;h3&gt;</code> と順番に使い、説明の文章は <code>&lt;p&gt;</code> にしましょう。'
     });
+  }
 
-    tagToolbox.addEventListener('dragend', (e) => {
-        const tagElement = e.target.closest('.tag');
-        if (tagElement) {
-            e.target.style.opacity = '1';
-        }
-        draggedTag = null;
+  function succeed() {
+    talk(LEVEL.talk.success, 'ok');
+    openModal({
+      state: 'ok',
+      title: 'クリア！',
+      lead: '正しく構造化されたので、探検家は目的の情報をすぐに見つけられました！',
+      outlineHTML: buildOutline(),
+      note: '<strong>ポイント：</strong>スクリーンリーダー（音声読み上げソフト）には「見出しジャンプ機能」があり、見出しをたどってページの内容をつかみます。正しい見出し構造は、情報への近道をつくる<strong>親切な道しるべ</strong>になるのです。'
     });
+  }
 
-    // --- Touch Drag Events (Mobile/Tablet) ---
-    // iPadやスマートフォンでのタッチ操作用
-    tagToolbox.addEventListener('touchstart', (e) => {
-        const tagElement = e.target.closest('.tag');
-        if (tagElement) {
-            // e.preventDefault(); // CSSのtouch-action:noneで対応
-            draggedTag = tagElement.dataset.tag;
+  function buildOutline() {
+    const items = blocks
+      .filter((b) => b.el.dataset.tag !== 'p')
+      .map((b) => {
+        const lv = b.el.dataset.tag[1];
+        const goal = b.text === LEVEL.goalText;
+        return `<li data-lv="${lv}"${goal ? ' data-goal="1"' : ''}>${esc(b.text)}` +
+               (goal ? '<span class="goal-badge">← 目的地！</span>' : '') + '</li>';
+      }).join('');
+    return `<ul>${items}</ul>`;
+  }
 
-            // ドラッグ中のゴースト要素を作成
-            ghostElement = tagElement.cloneNode(true);
-            ghostElement.classList.add('ghost-tag'); // スタイルを適用
-            document.body.appendChild(ghostElement);
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-            // ゴースト要素のサイズと位置を初期化
-            ghostElement.style.width = `${tagElement.offsetWidth}px`;
-            ghostElement.style.height = `${tagElement.offsetHeight}px`;
-            updateGhostPosition(e.touches[0]);
-        }
-    }, { passive: true }); // passive:trueでも動作するはず (CSSでtouch-actionを設定したため)
+  /* =======================================================
+     9. モーダル（Esc・背景クリック・フォーカストラップ対応）
+     ======================================================= */
+  function openModal({ state, title, lead, outlineHTML, note }) {
+    lastFocused = document.activeElement;
+    $('modal-title').textContent = title;
+    $('modal-title').dataset.state = state;
+    $('modal-lead').textContent = lead;
+    const outline = $('modal-outline');
+    outline.hidden = !outlineHTML;
+    outline.innerHTML = outlineHTML || '';
+    $('modal-note').innerHTML = note;
+    modal.hidden = false;
+    modalPanel.focus();
+  }
 
-    document.addEventListener('touchmove', (e) => {
-        if (!draggedTag || !ghostElement) return;
+  function closeModal() {
+    modal.hidden = true;
+    lastFocused?.focus?.();
+  }
 
-        // ドラッグ中はページのスクロールを禁止
-        e.preventDefault();
-        
-        updateGhostPosition(e.touches[0]);
+  $('modal-close').addEventListener('click', closeModal);
+  modal.addEventListener('pointerdown', (e) => { if (e.target === modal) closeModal(); });
+  document.addEventListener('keydown', (e) => {
+    if (modal.hidden) return;
+    if (e.key === 'Escape') { e.preventDefault(); closeModal(); return; }
+    if (e.key !== 'Tab') return;
+    const f = [...modal.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])')];
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
 
-        // --- elementFromPointの代わりに座標計算でターゲットを特定 ---
-        const touch = e.touches[0];
-        let foundTarget = null;
+  /* =======================================================
+     10. モバイル下部バーの高さを本文余白に反映
+     ======================================================= */
+  const toolbox = document.querySelector('.toolbox');
+  const syncBarHeight = () => {
+    const fixed = getComputedStyle(toolbox).position === 'fixed';
+    document.documentElement.style.setProperty('--bar-h', fixed ? `${toolbox.offsetHeight}px` : '0px');
+  };
+  window.addEventListener('resize', syncBarHeight);
+  window.addEventListener('orientationchange', () => setTimeout(syncBarHeight, 250));
+  if (window.ResizeObserver) new ResizeObserver(syncBarHeight).observe(toolbox);
 
-        // キャッシュしたドロップ先をループ
-        for (const target of dropTargets) {
-            const rect = target.getBoundingClientRect();
-            // 指の座標が要素の矩形内にあるかチェック
-            if (touch.clientX >= rect.left && touch.clientX <= rect.right &&
-                touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
-                foundTarget = target;
-                break; // 座標が重なる最初の要素を見つけたら終了
-            }
-        }
-
-        // ゴーストを一時的に非表示にして、指の下にある要素を取得 (旧ロジック)
-        // ghostElement.style.display = 'none';
-        // const elementUnder = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
-        // ghostElement.style.display = ''; // ゴーストを再表示
-        // const dropTarget = elementUnder ? elementUnder.closest('.drop-target') : null;
-
-        // ホバー中のターゲットが変更された場合、スタイルを更新
-        if (currentDropTarget && currentDropTarget !== foundTarget) {
-            currentDropTarget.classList.remove('drag-over');
-        }
-
-        if (foundTarget) {
-            foundTarget.classList.add('drag-over');
-            currentDropTarget = foundTarget;
-        } else {
-            currentDropTarget = null;
-        }
-    }, { passive: false }); // preventDefaultを呼ぶため passive: false が必要
-
-    document.addEventListener('touchend', (e) => {
-        if (!draggedTag || !ghostElement) return;
-
-        // タッチ終了地点の要素を取得 (旧ロジック)
-        // (ghostElementはpointer-events:noneなので、その下の要素が取得される)
-        // const elementUnder = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-        // const dropTarget = elementUnder ? elementUnder.closest('.drop-target') : null;
-
-        // touchmoveで最後にホバーしていた要素をドロップ先とする
-        const dropTarget = currentDropTarget;
-
-        if (dropTarget) {
-            applyTag(dropTarget, draggedTag);
-            dropTarget.classList.remove('drag-over');
-        }
-        
-        // クリーンアップ
-        document.body.removeChild(ghostElement);
-        ghostElement = null;
-        draggedTag = null;
-        currentDropTarget = null;
-        // dropTargetsはクリアしない (レベルリセットまで要素は変わらないため)
-
-        // 万が一 .drag-over が残っていたら削除
-        contentArea.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-    });
-
-    /**
-     * タッチ位置に合わせてゴースト要素を移動
-     */
-    function updateGhostPosition(touch) {
-        if (!ghostElement) return;
-        // ゴーストが指の中心に来るように調整
-        ghostElement.style.left = `${touch.clientX - ghostElement.offsetWidth / 2}px`;
-        ghostElement.style.top = `${touch.clientY - ghostElement.offsetHeight / 2}px`;
-    }
-
-    /**
-     * Drop Targetにイベントリスナーを追加 (PCのマウス操作用)
-     */
-    function addDropListeners() {
-        const targets = contentArea.querySelectorAll('.drop-target');
-        
-        // タッチ操作用にドロップ先をキャッシュ
-        dropTargets = Array.from(targets);
-
-        targets.forEach(target => {
-            // --- Mouse Events ---
-            target.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                target.classList.add('drag-over');
-            });
-            target.addEventListener('dragleave', () => {
-                target.classList.remove('drag-over');
-            });
-            target.addEventListener('drop', (e) => {
-                e.preventDefault();
-                target.classList.remove('drag-over');
-                const tag = e.dataTransfer.getData('text/plain');
-                if (tag) {
-                    applyTag(target, tag);
-                }
-            });
-        });
-    }
-    
-    /**
-     * ターゲット要素にタグを適用する (共通関数)
-     */
-    function applyTag(target, tag) {
-        // 既存のスタイルを一度リセット
-        const classesToRemove = ['h1-style', 'h2-style', 'h3-style', 'p-style'];
-        target.classList.remove(...classesToRemove);
-
-        // 新しいスタイルとタグ情報を適用
-        target.classList.add('tagged');
-        target.classList.add(`${tag}-style`);
-        target.dataset.tag = tag;
-        target.dataset.tagDisplay = `<${tag}>`;
-    }
-
-
-    // --- Validation and Feedback Logic ---
-    checkButton.addEventListener('click', () => {
-        const structure = Array.from(contentArea.querySelectorAll('.drop-target')).map(el => {
-            return {
-                tag: el.dataset.tag || 'p', // Default to 'p' if untagged
-                text: el.textContent,
-                level: el.dataset.tag ? (el.dataset.tag.startsWith('h') ? parseInt(el.dataset.tag.replace('h', '')) : 0) : 0,
-            };
-        });
-
-        // --- Validation Rules ---
-        const h1Count = structure.filter(item => item.tag === 'h1').length;
-        if (h1Count === 0) {
-            showFeedback(false, level1.dialogue.noH1);
-            return;
-        }
-        if (h1Count > 1) {
-            showFeedback(false, level1.dialogue.multipleH1);
-            return;
-        }
-
-        if (structure.every(item => item.tag === 'p')) {
-             showFeedback(false, level1.dialogue.allParagraphs);
-            return;
-        }
-
-        let lastLevel = 0;
-        for (const item of structure) {
-            if (item.tag.startsWith('h')) {
-                if (item.level > lastLevel + 1) {
-                    showFeedback(false, level1.dialogue.levelSkip);
-                    return;
-                }
-                lastLevel = item.level;
-            }
-        }
-        
-        // If all checks pass, it's a success
-        dialogueBox.innerHTML = level1.dialogue.success;
-        showFeedback(true, "ナビゲーション成功！", structure);
-    });
-
-    function showFeedback(isSuccess, message, structure = null) {
-        modal.classList.remove('hidden');
-        if (isSuccess) {
-            modalTitle.textContent = 'クリア！';
-            modalTitle.className = 'text-3xl font-extrabold mb-4 text-green-500';
-            modalContent.textContent = '正しく構造化されたため、探検家は目的の情報をすぐに見つけられました！';
-            modalExplanation.innerHTML = `<strong>ポイント：</strong>スクリーンリーダー（音声読み上げソフト）は、見出しを頼りにページの内容を把握します。正しい見出し構造は、情報への近道を作る「親切な道しるべ」になるのです。`;
-            generateOutline(structure);
-        } else {
-            modalTitle.textContent = 'おしい！';
-            modalTitle.className = 'text-3xl font-extrabold mb-4 text-red-500';
-            modalContent.innerHTML = message;
-            modalOutline.innerHTML = '<p class="text-slate-500 italic">構造が不適切なため、目次を生成できませんでした。</p>';
-            modalExplanation.innerHTML = `<strong>ヒント：</strong>見出しは文書の骨格です。<code>&lt;h1&gt;</code>を頂点に、<code>&lt;h2&gt;</code>、<code>&lt;h3&gt;</code>と順番に使いましょう。`;
-            dialogueBox.innerHTML = message;
-        }
-    }
-
-    function generateOutline(structure) {
-        modalOutline.innerHTML = '';
-        const outlineList = document.createElement('ul');
-        outlineList.className = 'space-y-2';
-        structure.forEach(item => {
-            if(item.tag.startsWith('h')) {
-                const li = document.createElement('li');
-                li.textContent = item.text;
-                li.className = 'font-semibold text-slate-700 p-2 rounded-md';
-                if (item.tag === 'h2') li.style.marginLeft = '20px';
-                if (item.tag === 'h3') li.style.marginLeft = '40px';
-                
-                if (item.text === level1.targetText) {
-                    li.classList.add('bg-sky-200', 'ring-2', 'ring-sky-500');
-                    const span = document.createElement('span');
-                    span.className = 'ml-2 text-xs font-bold text-sky-700 align-middle';
-                    span.textContent = '←目的地！';
-                    li.appendChild(span);
-                }
-                outlineList.appendChild(li);
-            }
-        });
-        modalOutline.appendChild(outlineList);
-    }
-    
-    // --- Event Listeners ---
-    resetButton.addEventListener('click', resetLevel);
-    modalCloseButton.addEventListener('click', () => modal.classList.add('hidden'));
-
-    // --- Initial Load ---
-    loadLevel(level1);
-});
+  /* =======================================================
+     11. 起動
+     ======================================================= */
+  build();
+  syncBarHeight();
+  window.addEventListener('load', syncBarHeight);
+})();
 </script>
 
 </body>
 </html>
-
