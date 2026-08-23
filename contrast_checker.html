@@ -2,290 +2,748 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WCAG 2.0 コントラスト比チェッカー</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>コントラスト比チェッカー ｜ 見やすい配色をさがそう</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        line-height: 1.6;
-        color: #333;
-        max-width: 600px;
-        margin: 20px auto;
-        padding: 0 15px;
-        background-color: #f8f9fa;
-    }
-    h1 {
-        text-align: center;
-        color: #000;
-    }
-    .controls, .result {
-        background-color: #fff;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        margin-bottom: 20px;
-    }
-    .color-picker-group {
-        display: flex;
-        justify-content: space-around;
-        align-items: center;
-    }
-    .color-picker-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-    label {
-        margin-bottom: 10px;
-        font-weight: bold;
-    }
-    input[type="color"] {
-        width: 80px;
-        height: 40px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        cursor: pointer;
-        padding: 0;
-        background: none;
-    }
-    #preview {
-        margin-top: 20px;
-        padding: 20px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        font-size: 16px;
-        text-align: center;
-        transition: background-color 0.3s, color 0.3s;
-    }
-    #preview p {
-        font-weight: bold;
-        font-size: 1.2em;
-    }
-    .result h2 {
-        margin-top: 0;
-        text-align: center;
-    }
-    #contrast-ratio {
-        font-size: 2em;
-        font-weight: bold;
-        text-align: center;
-        margin: 0;
-    }
-    #wcag-level {
-        text-align: center;
-        font-size: 1.2em;
-        font-weight: bold;
-        margin-top: 10px;
-    }
+/* =========================================================
+   コントラスト比チェッカー
+   高等学校 情報Ⅰ 補助教材「情報アクセシビリティをはじめよう」
+   - 外部フレームワーク・外部画像に依存しない（フォント以外はオフラインで動作）
+   - サンプル画像はCanvasに直接描画するため、読み込み失敗もCORS汚染も起きない
+   ========================================================= */
+
+:root{
+  --ink:#1e293b; --ink-soft:#475569; --ink-mute:#64748b;
+  --line:#cbd5e1; --line-soft:#e2e8f0;
+  --bg:#f1f5f9; --surface:#fff; --surface-2:#f8fafc;
+
+  --brand:#0369a1; --brand-dark:#075985; --brand-tint:#f0f9ff; --brand-line:#7dd3fc;
+  --ok:#15803d; --ok-tint:#f0fdf4; --ok-line:#86efac;
+  --warn:#b45309; --warn-tint:#fffbeb; --warn-line:#fcd34d;
+  --ng:#b91c1c; --ng-tint:#fef2f2; --ng-line:#fca5a5;
+  --gold:#78350f;
+
+  --r-sm:8px; --r-md:12px; --r-lg:18px; --r-xl:24px;
+  --shadow-1:0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.08);
+  --shadow-2:0 6px 18px rgba(15,23,42,.10);
+  --tap:44px;
+
+  --font:'M PLUS Rounded 1c','Hiragino Maru Gothic ProN','BIZ UDPGothic',
+         'Yu Gothic UI','Hiragino Sans','Noto Sans JP',system-ui,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0; font-family:var(--font); color:var(--ink); background:var(--bg);
+  line-height:1.75; -webkit-tap-highlight-color:transparent;
+}
+button,input,select{ font:inherit; color:inherit; }
+:focus-visible{ outline:3px solid var(--brand); outline-offset:2px; border-radius:6px; }
+@media (prefers-reduced-motion:reduce){ *{ transition-duration:.01ms!important; } }
+
+/* ---------- 骨格 ---------- */
+.wrap{
+  max-width:1100px; margin-inline:auto;
+  padding:clamp(12px,2.5vw,26px) clamp(12px,2.5vw,20px) calc(28px + env(safe-area-inset-bottom));
+}
+.pagehead{ text-align:center; margin-bottom:clamp(14px,2vw,22px); }
+.pagehead h1{ margin:0; font-size:clamp(1.4rem,1.1rem+1.4vw,2rem); font-weight:800; color:#334155; }
+.pagehead p{ margin:.4em auto 0; max-width:58ch; color:var(--ink-mute); font-size:clamp(.85rem,.8rem+.2vw,.98rem); }
+
+.grid{ display:grid; grid-template-columns:minmax(0,1fr); gap:clamp(12px,1.6vw,18px); align-items:start; }
+@media (min-width:900px){ .grid{ grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); } }
+
+.card{
+  background:var(--surface); border:1px solid var(--line-soft);
+  border-radius:var(--r-lg); box-shadow:var(--shadow-1);
+  padding:clamp(14px,2vw,20px);
+}
+.card > h2{
+  margin:0 0 4px; font-size:1rem; font-weight:800; color:#334155;
+  display:flex; align-items:center; gap:8px;
+}
+.card > p.lead{ margin:0 0 12px; font-size:.84rem; color:var(--ink-mute); }
+.num{
+  flex:none; display:grid; place-items:center; width:26px; height:26px;
+  border-radius:50%; background:var(--brand); color:#fff; font-size:.82rem; font-weight:800;
+}
+
+/* ---------- サンプル画像 / スポイト ---------- */
+.samples{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.chip{
+  -webkit-appearance:none; appearance:none;
+  min-height:38px; padding:0 14px; border-radius:999px;
+  border:2px solid var(--line); background:#fff; color:var(--ink-soft);
+  font-size:.82rem; font-weight:800; cursor:pointer; touch-action:manipulation;
+}
+.chip:hover{ border-color:var(--brand-line); }
+.chip[aria-pressed="true"]{ background:var(--brand); border-color:var(--brand); color:#fff; }
+.upload{ position:relative; overflow:hidden; }
+.upload input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+
+.canvaswrap{ position:relative; border-radius:var(--r-md); overflow:hidden; border:1px solid var(--line-soft); }
+canvas{ display:block; width:100%; height:auto; cursor:crosshair; touch-action:manipulation; background:#fff; }
+canvas:focus-visible{ outline:3px solid var(--brand); outline-offset:-3px; }
+
+.pickbar{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  margin-top:10px; padding:10px 12px;
+  background:var(--surface-2); border:1px solid var(--line-soft); border-radius:var(--r-md);
+}
+.pickbar .swatch{
+  flex:none; width:34px; height:34px; border-radius:var(--r-sm);
+  border:2px solid var(--line); background:#fff;
+}
+.pickbar .hex{ font-family:var(--mono); font-size:.9rem; font-weight:700; color:#334155; }
+.pickbar .to{ font-size:.78rem; color:var(--ink-mute); }
+.seg{ display:flex; border:1px solid var(--line); border-radius:999px; overflow:hidden; background:#fff; }
+.seg button{
+  -webkit-appearance:none; appearance:none; border:0; background:transparent;
+  min-height:36px; padding:0 13px; font-size:.8rem; font-weight:800;
+  color:var(--ink-soft); cursor:pointer;
+}
+.seg button+button{ border-left:1px solid var(--line); }
+.seg button[aria-pressed="true"]{ background:var(--brand); color:#fff; }
+.hint{ margin:8px 0 0; font-size:.78rem; color:var(--ink-mute); }
+kbd{
+  font-family:inherit; font-size:.78em; font-weight:700;
+  background:#fff; border:1px solid var(--line); border-bottom-width:2px;
+  border-radius:5px; padding:0 5px;
+}
+
+/* ---------- 色の入力 ---------- */
+.colors{ display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); gap:10px; align-items:end; }
+@media (max-width:440px){
+  .colors{ grid-template-columns:minmax(0,1fr); }
+  .swap{ justify-self:center; transform:rotate(90deg); }
+}
+.field label{ display:block; font-size:.8rem; font-weight:800; color:var(--ink-soft); margin-bottom:4px; }
+.field .row{ display:flex; gap:8px; align-items:center; }
+input[type="color"]{
+  -webkit-appearance:none; appearance:none;
+  flex:none; width:52px; height:44px; padding:0;
+  border:2px solid var(--line); border-radius:var(--r-sm); background:none; cursor:pointer;
+}
+input[type="color"]::-webkit-color-swatch-wrapper{ padding:3px; }
+input[type="color"]::-webkit-color-swatch{ border:0; border-radius:5px; }
+input[type="text"].hexin{
+  flex:1; min-width:0; height:44px; padding:0 10px;
+  border:2px solid var(--line); border-radius:var(--r-sm); background:#fff;
+  font-family:var(--mono); font-size:.92rem; font-weight:700; text-transform:uppercase;
+}
+input[type="text"].hexin:focus{ border-color:var(--brand); }
+input[type="text"].hexin[aria-invalid="true"]{ border-color:var(--ng); background:var(--ng-tint); }
+.swap{
+  -webkit-appearance:none; appearance:none;
+  width:44px; height:44px; border-radius:50%;
+  border:2px solid var(--line); background:#fff; cursor:pointer;
+  font-size:1.1rem; line-height:1; color:var(--ink-soft);
+}
+.swap:hover{ background:var(--surface-2); border-color:var(--brand-line); }
+
+/* ---------- 結果 ---------- */
+.ratio{
+  margin-top:16px; padding:16px; border-radius:var(--r-md); text-align:center;
+  border:2px solid;
+}
+.ratio[data-level="aaa"]{ background:var(--ok-tint); border-color:var(--ok-line); }
+.ratio[data-level="aa"]{ background:var(--ok-tint); border-color:var(--ok-line); }
+.ratio[data-level="large"]{ background:var(--warn-tint); border-color:var(--warn-line); }
+.ratio[data-level="ng"]{ background:var(--ng-tint); border-color:var(--ng-line); }
+.ratio .lbl{ font-size:.8rem; font-weight:800; color:var(--ink-soft); }
+.ratio .big{ font-size:clamp(2.6rem,2rem+2.4vw,3.6rem); font-weight:800; line-height:1.05; font-variant-numeric:tabular-nums; }
+.ratio[data-level="aaa"] .big,.ratio[data-level="aa"] .big{ color:var(--ok); }
+.ratio[data-level="large"] .big{ color:var(--warn); }
+.ratio[data-level="ng"] .big{ color:var(--ng); }
+.ratio .verdict{ font-size:.95rem; font-weight:800; }
+
+.checks{ margin-top:14px; border:1px solid var(--line-soft); border-radius:var(--r-md); overflow:hidden; }
+.checks table{ border-collapse:collapse; width:100%; }
+.checks caption{ caption-side:top; text-align:left; padding:10px 12px 6px; font-size:.85rem; font-weight:800; color:#334155; }
+.checks th,.checks td{ border-top:1px solid var(--line-soft); padding:9px 12px; font-size:.84rem; text-align:left; }
+.checks thead th{ background:var(--surface-2); font-size:.76rem; font-weight:800; color:var(--ink-soft); }
+.checks tbody th{ font-weight:700; color:#334155; }
+.checks tbody th small{ display:block; font-weight:400; font-size:.74rem; color:var(--ink-mute); }
+.mark{ font-weight:800; }
+.mark[data-p="1"]{ color:var(--ok); }
+.mark[data-p="0"]{ color:var(--ng); }
+
+.fixbar{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.btn{
+  -webkit-appearance:none; appearance:none;
+  min-height:var(--tap); padding:10px 18px; border-radius:999px;
+  border:2px solid transparent; font-weight:800; font-size:.88rem; cursor:pointer;
+  box-shadow:var(--shadow-1); touch-action:manipulation;
+}
+.btn-primary{ background:var(--brand); color:#fff; }
+.btn-primary:hover{ background:var(--brand-dark); }
+.btn-ghost{ background:#fff; color:var(--ink-soft); border-color:var(--line); }
+.btn-ghost:hover{ background:#f1f5f9; }
+.btn[disabled]{ opacity:.45; cursor:default; }
+
+/* ---------- プレビュー ---------- */
+.preview{
+  margin-top:6px; border-radius:var(--r-md); overflow:hidden;
+  border:1px solid var(--line-soft);
+}
+.preview .inner{ padding:clamp(16px,2.5vw,26px); transition:background-color .2s ease, color .2s ease; }
+.preview .p-h{ font-size:32px; font-weight:800; line-height:1.4; margin:0; }
+.preview .p-l{ font-size:24px; font-weight:700; line-height:1.5; margin:.5em 0 0; }
+.preview .p-b{ font-size:16px; line-height:1.8; margin:.7em 0 0; }
+.preview .p-s{ font-size:13px; line-height:1.8; margin:.5em 0 0; }
+.preview .p-ui{ display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; align-items:center; }
+.preview .p-btn{ border:2px solid currentColor; border-radius:999px; padding:6px 16px; font-size:14px; font-weight:800; }
+.preview .p-link{ text-decoration:underline; text-underline-offset:3px; font-size:15px; font-weight:700; }
+.sizehint{ display:flex; flex-wrap:wrap; gap:6px 14px; margin:10px 0 0; font-size:.76rem; color:var(--ink-mute); }
+
+/* ---------- 補足 ---------- */
+.note{
+  margin-top:clamp(14px,2vw,20px); padding:14px 16px; border-radius:var(--r-md);
+  background:var(--warn-tint); border:1px solid var(--warn-line); color:var(--gold);
+  font-size:.86rem;
+}
+.note b{ font-weight:800; }
+.visually-hidden{
+  position:absolute!important; width:1px; height:1px; margin:-1px; padding:0;
+  overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0;
+}
+.credit{ text-align:center; margin:18px 0 0; font-size:.75rem; color:var(--ink-mute); }
 </style>
 </head>
 <body>
 
-    <h1>WCAG 2.0 コントラスト比チェッカー</h1>
+<div class="wrap">
+  <header class="pagehead">
+    <h1>コントラスト比チェッカー</h1>
+    <p>背景と文字の「明るさの差」を数字で確かめます。サンプルの中から色を吸い取って、見やすい組み合わせをさがしてみましょう。</p>
+  </header>
 
+  <div class="grid">
 
+    <!-- ============ 左：サンプルとスポイト ============ -->
+    <section class="card" aria-labelledby="h-pick">
+      <h2 id="h-pick"><span class="num" aria-hidden="true">1</span>色を吸い取る</h2>
+      <p class="lead">サンプルを選んで、気になるところをタップ／クリックすると、その色を取り込めます。</p>
 
-    <!-- 画像アップロード・スポイト・サンプル画像切替機能追加 -->
-    <div class="controls" style="margin-bottom: 20px;">
-        <label for="imageUpload"><b>画像をアップロード:</b></label>
-        <input type="file" id="imageUpload" accept="image/*">
-        <div style="margin:10px 0;">
-            <label><input type="radio" name="pickTarget" value="bg" checked> 背景色に反映</label>
-            <label><input type="radio" name="pickTarget" value="text"> 文字色に反映</label>
+      <div class="samples" role="group" aria-label="サンプルの切り替え">
+        <button type="button" class="chip" data-sample="0" aria-pressed="true">文化祭のポスター</button>
+        <button type="button" class="chip" data-sample="1" aria-pressed="false">学校のホームページ</button>
+        <button type="button" class="chip" data-sample="2" aria-pressed="false">発表スライド</button>
+        <span class="chip upload">
+          自分の画像を使う
+          <input type="file" id="file" accept="image/*" aria-label="画像ファイルを選ぶ">
+        </span>
+      </div>
+
+      <div class="canvaswrap">
+        <canvas id="cv" width="960" height="640" tabindex="0"
+                role="img" aria-label="色を吸い取るためのサンプル画像。矢印キーで位置を動かし、Enterキーで色を取り込めます。"></canvas>
+      </div>
+
+      <div class="pickbar">
+        <span class="swatch" id="hover-sw" aria-hidden="true"></span>
+        <span class="hex" id="hover-hex">#FFFFFF</span>
+        <span class="to">を</span>
+        <span class="seg" role="group" aria-label="取り込み先">
+          <button type="button" id="to-bg" aria-pressed="true">背景色へ</button>
+          <button type="button" id="to-fg" aria-pressed="false">文字色へ</button>
+        </span>
+      </div>
+      <p class="hint">
+        キーボードでも操作できます。画像を選んで <kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> で移動（<kbd>Shift</kbd>＋で細かく）、<kbd>Enter</kbd> で取り込み。
+      </p>
+    </section>
+
+    <!-- ============ 右：色と判定 ============ -->
+    <section class="card" aria-labelledby="h-check">
+      <h2 id="h-check"><span class="num" aria-hidden="true">2</span>比べる</h2>
+      <p class="lead">直接入力もできます。<code>#</code> のあとに6桁の16進数を書いてください。</p>
+
+      <div class="colors">
+        <div class="field">
+          <label for="bg-color">背景色</label>
+          <div class="row">
+            <input type="color" id="bg-color" value="#D9F2EA">
+            <input type="text" class="hexin" id="bg-hex" value="#D9F2EA" maxlength="7"
+                   inputmode="text" spellcheck="false" aria-label="背景色のカラーコード">
+          </div>
         </div>
-        <div style="margin:10px 0;">
-            <b>サンプル画像:</b>
-            <label><input type="radio" name="sampleImage" value="sample1.png" checked> サンプル1</label>
-            <label><input type="radio" name="sampleImage" value="sample2.png"> サンプル2</label>
-            <label><input type="radio" name="sampleImage" value="sample3.png"> サンプル3</label>
+        <button type="button" class="swap" id="swap" aria-label="背景色と文字色を入れ替える" title="入れ替え">⇄</button>
+        <div class="field">
+          <label for="fg-color">文字色</label>
+          <div class="row">
+            <input type="color" id="fg-color" value="#FFFFFF">
+            <input type="text" class="hexin" id="fg-hex" value="#FFFFFF" maxlength="7"
+                   inputmode="text" spellcheck="false" aria-label="文字色のカラーコード">
+          </div>
         </div>
-        <canvas id="imageCanvas" width="400" height="300" style="border:1px solid #ccc; display:none; cursor:crosshair;"></canvas>
+      </div>
+
+      <div class="ratio" id="ratio" data-level="ng">
+        <p class="lbl" style="margin:0">コントラスト比</p>
+        <p class="big" id="ratio-num" style="margin:0">1.00 : 1</p>
+        <p class="verdict" id="verdict" style="margin:0"></p>
+      </div>
+
+      <div class="checks">
+        <table>
+          <caption>WCAG の基準に当てはめると</caption>
+          <thead>
+            <tr><th scope="col">用途</th><th scope="col">AA</th><th scope="col">AAA</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">本文の文字<small>およそ16px以下のふつうの文字</small></th>
+              <td><span class="mark" id="m-aa-normal"></span> <small>4.5:1</small></td>
+              <td><span class="mark" id="m-aaa-normal"></span> <small>7:1</small></td>
+            </tr>
+            <tr>
+              <th scope="row">大きい文字<small>24px以上、または18.7px以上の太字</small></th>
+              <td><span class="mark" id="m-aa-large"></span> <small>3:1</small></td>
+              <td><span class="mark" id="m-aaa-large"></span> <small>4.5:1</small></td>
+            </tr>
+            <tr>
+              <th scope="row">ボタンの枠・図形<small>アイコンやグラフの色分けなど</small></th>
+              <td><span class="mark" id="m-aa-ui"></span> <small>3:1</small></td>
+              <td><small style="color:var(--ink-mute)">―</small></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="fixbar">
+        <button type="button" class="btn btn-primary" id="fix">4.5:1 を満たす色に直す</button>
+        <button type="button" class="btn btn-ghost" id="reset">最初に戻す</button>
+      </div>
+      <p class="hint" id="fix-note"></p>
+    </section>
+  </div>
+
+  <!-- ============ プレビュー ============ -->
+  <section class="card" style="margin-top:clamp(12px,1.6vw,18px)" aria-labelledby="h-prev">
+    <h2 id="h-prev"><span class="num" aria-hidden="true">3</span>実際の見え方</h2>
+    <p class="lead">同じ配色でも、文字の大きさによって読みやすさは変わります。</p>
+    <div class="preview">
+      <div class="inner" id="preview">
+        <p class="p-h">見やすい配色をさがそう</p>
+        <p class="p-l">大きい文字はこう見えます</p>
+        <p class="p-b">本文の文字はこのくらいの大きさです。ウェブサイトや資料の説明文は、たいていこの大きさで書かれています。読み続けても疲れないかどうか、確かめてみましょう。</p>
+        <p class="p-s">小さい注意書きは、さらに読みにくくなります。※ 申込みの締め切りは9月30日です。</p>
+        <p class="p-ui">
+          <span class="p-btn">ボタンの見本</span>
+          <span class="p-link">リンクの見本</span>
+        </p>
+      </div>
     </div>
+    <p class="sizehint">
+      <span>見出し 32px</span><span>大きい文字 24px</span><span>本文 16px</span><span>小さい文字 13px</span>
+    </p>
+  </section>
 
-    <div class="controls">
-        <div class="color-picker-group">
-            <div class="color-picker-item">
-                <label for="bgColorPicker">背景色</label>
-                <input type="color" id="bgColorPicker" value="#FFFFFF">
-            </div>
-            <div class="color-picker-item">
-                <label for="textColorPicker">文字色</label>
-                <input type="color" id="textColorPicker" value="#000000">
-            </div>
-        </div>
-        <div id="preview">
-            <p>ここにサンプルテキストが表示されます。</p>
-            The quick brown fox jumps over the lazy dog.
-        </div>
-    </div>
+  <p class="note">
+    <b>コントラスト比だけがすべてではありません。</b>
+    基準を満たしていても、細い書体・小さすぎる文字・背景写真の上の文字などは読みにくくなります。
+    また「色だけで情報を伝えない」ことも別に必要です。数値は<b>最低限の目安</b>として使い、最後は実際に見て確かめましょう。
+  </p>
 
-    <div class="result">
-        <h2>コントラスト比</h2>
-        <p id="contrast-ratio">21.00</p>
-        <p id="wcag-level"></p>
-    </div>
+  <p class="credit">高等学校 情報Ⅰ 補助教材「つくって、つたえる、みんなのために」　基準：WCAG 2.1（JIS X 8341-3 に対応）</p>
+</div>
+
+<p class="visually-hidden" id="live" role="status" aria-live="polite"></p>
 
 <script>
-    // DOM要素の取得
-    const bgColorPicker = document.getElementById('bgColorPicker');
-    const textColorPicker = document.getElementById('textColorPicker');
-    const preview = document.getElementById('preview');
-    const contrastRatioEl = document.getElementById('contrast-ratio');
-    const wcagLevelEl = document.getElementById('wcag-level');
-    // 画像アップロード・スポイト・サンプル画像切替用
-    const imageUpload = document.getElementById('imageUpload');
-    const imageCanvas = document.getElementById('imageCanvas');
-    const ctx = imageCanvas.getContext('2d');
-    let img = null;
-    // サンプル画像ファイル名リスト
-    const sampleImages = ["sample1.png", "sample2.png", "sample3.png"];
-    // サンプル画像をcanvasに表示する関数
-    function showSampleImage(filename) {
-        img = new Image();
-        img.onload = function() {
-            let w = img.width, h = img.height;
-            const maxW = 400, maxH = 300;
-            if (w > maxW || h > maxH) {
-                const scale = Math.min(maxW / w, maxH / h);
-                w = Math.round(w * scale);
-                h = Math.round(h * scale);
-            }
-            imageCanvas.width = w;
-            imageCanvas.height = h;
-            imageCanvas.style.display = 'block';
-            ctx.clearRect(0, 0, w, h);
-            ctx.drawImage(img, 0, 0, w, h);
-        };
-        img.src = filename;
-    }
+(() => {
+  'use strict';
 
-    // サンプル画像ラジオボタン切替イベント
-    document.querySelectorAll('input[name="sampleImage"]').forEach(radio => {
-        radio.addEventListener('change', function(e) {
-            if (e.target.checked) {
-                showSampleImage(e.target.value);
-            }
-        });
+  const $ = (id) => document.getElementById(id);
+  const live = $('live');
+
+  /* =========================================================
+     1. 色の計算
+     ========================================================= */
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const hex2rgb = (h) => {
+    const n = parseInt(h.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  };
+  const rgb2hex = (r, g, b) =>
+    '#' + [r, g, b].map((v) => clamp(Math.round(v), 0, 255).toString(16).padStart(2, '0')).join('').toUpperCase();
+
+  const luminance = ([r, g, b]) => {
+    const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+  };
+  const contrast = (hexA, hexB) => {
+    const l1 = luminance(hex2rgb(hexA)), l2 = luminance(hex2rgb(hexB));
+    const hi = Math.max(l1, l2), lo = Math.min(l1, l2);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+
+  // HSL 変換（自動調整で色みを保つために使う）
+  const rgb2hsl = ([r, g, b]) => {
+    r /= 255; g /= 255; b /= 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    let h = 0;
+    if (d) {
+      if (mx === r) h = ((g - b) / d) % 6;
+      else if (mx === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60; if (h < 0) h += 360;
+    }
+    const l = (mx + mn) / 2;
+    const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+    return [h, s, l];
+  };
+  const hsl2rgb = ([h, s, l]) => {
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = l - c / 2;
+    let r = 0, g = 0, b = 0;
+    if (h < 60)       [r, g, b] = [c, x, 0];
+    else if (h < 120) [r, g, b] = [x, c, 0];
+    else if (h < 180) [r, g, b] = [0, c, x];
+    else if (h < 240) [r, g, b] = [0, x, c];
+    else if (h < 300) [r, g, b] = [x, 0, c];
+    else              [r, g, b] = [c, 0, x];
+    return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
+  };
+
+  /** 文字色の明るさだけを動かして、目標のコントラスト比を満たす色を探す */
+  function adjustToward(fgHex, bgHex, target) {
+    const [h, s, l0] = rgb2hsl(hex2rgb(fgHex));
+    const bgL = luminance(hex2rgb(bgHex));
+    // 背景が明るければ文字を暗く、暗ければ明るくする
+    const dir = bgL > 0.35 ? -1 : 1;
+    let best = null;
+    for (let i = 1; i <= 100; i++) {
+      const l = clamp(l0 + dir * i / 100, 0, 1);
+      const cand = rgb2hex(...hsl2rgb([h, s, l]));
+      if (contrast(cand, bgHex) >= target) { best = cand; break; }
+      if (l === 0 || l === 1) break;
+    }
+    if (best) return best;
+    // 明るさを振り切っても届かないときは、彩度も落として白/黒に寄せる
+    const fallback = dir < 0 ? '#000000' : '#FFFFFF';
+    return contrast(fallback, bgHex) >= target ? fallback : null;
+  }
+
+  /* =========================================================
+     2. サンプル画像（Canvasに直接描画。外部ファイル不要）
+     ========================================================= */
+  const W = 960, H = 640;
+  const base = document.createElement('canvas');
+  base.width = W; base.height = H;
+  const bctx = base.getContext('2d', { willReadFrequently: true });
+  const F = getComputedStyle(document.body).fontFamily;
+
+  const txt = (c, size, weight, s, x, y, align) => {
+    bctx.fillStyle = c;
+    bctx.font = `${weight} ${size}px ${F}`;
+    bctx.textAlign = align || 'left';
+    bctx.textBaseline = 'alphabetic';
+    bctx.fillText(s, x, y);
+  };
+  const rect = (c, x, y, w, h, r) => {
+    bctx.fillStyle = c;
+    bctx.beginPath();
+    if (r && bctx.roundRect) bctx.roundRect(x, y, w, h, r); else bctx.rect(x, y, w, h);
+    bctx.fill();
+  };
+
+  const SAMPLES = [
+    // ---------- 0. 文化祭のポスター ----------
+    () => {
+      rect('#d9f2ea', 0, 0, W, H);
+      bctx.fillStyle = '#c4e9dd';
+      for (let i = 0; i < 5; i++) { bctx.beginPath(); bctx.arc(120 + i * 200, 600, 90, 0, Math.PI * 2); bctx.fill(); }
+      txt('#ffffff', 76, 800, '第58回　清泉祭', W / 2, 150, 'center');          // 白×ミント＝約1.2:1
+      txt('#ffffff', 34, 700, '― つながる、ひろがる ―', W / 2, 205, 'center');
+      rect('#1b3a6b', 90, 250, W - 180, 110, 16);
+      txt('#ffffff', 44, 800, '10月18日（土）・19日（日）', W / 2, 320, 'center'); // 白×濃紺＝約11:1
+      bctx.fillStyle = '#ffd23f'; bctx.beginPath(); bctx.arc(200, 460, 92, 0, Math.PI * 2); bctx.fill();
+      txt('#ffffff', 38, 800, '入場', 200, 448, 'center');                        // 白×黄＝約1.4:1
+      txt('#ffffff', 38, 800, '無料', 200, 492, 'center');
+      rect('#ffffff', 330, 390, 540, 150, 14);
+      txt('#333333', 30, 700, '会場：清泉高校 全校舎', 360, 440);
+      txt('#b0b0b0', 22, 400, '※ 上履き・スリッパをご持参ください', 360, 480);    // 薄灰×白＝約2.2:1
+      txt('#b0b0b0', 22, 400, '※ 駐車場のご用意はありません', 360, 512);
+      txt('#ffffff', 26, 700, '主催：清泉高校 生徒会', W / 2, 610, 'center');
+    },
+    // ---------- 1. 学校のホームページ ----------
+    () => {
+      rect('#ffffff', 0, 0, W, H);
+      rect('#0369a1', 0, 0, W, 96);
+      txt('#ffffff', 34, 800, '清泉高等学校', 40, 60);                            // 白×紺＝約5.9:1
+      txt('#bae6fd', 24, 700, '学校紹介', 460, 60);
+      txt('#bae6fd', 24, 700, '入学案内', 610, 60);
+      txt('#bae6fd', 24, 700, 'アクセス', 760, 60);
+      txt('#333333', 44, 800, 'お知らせ', 40, 180);                              // 黒っぽい×白＝約12.6:1
+      rect('#e2e8f0', 40, 200, 880, 2);
+      txt('#333333', 26, 400, '2026年8月20日　二学期始業式について', 40, 256);
+      txt('#1d4ed8', 26, 700, '　→ 詳しい日程を見る', 40, 300);                   // 青リンク×白＝約6.7:1
+      txt('#999999', 22, 400, '※ 掲載内容は変更になる場合があります', 40, 344);   // 薄灰×白＝約2.9:1
+      rect('#38bdf8', 40, 400, 400, 96, 14);
+      txt('#ffffff', 32, 800, '入学願書はこちら', 240, 460, 'center');             // 白×水色＝約2.1:1
+      rect('#0369a1', 480, 400, 400, 96, 14);
+      txt('#ffffff', 32, 800, '学校案内をダウンロード', 680, 460, 'center');
+      rect('#f8fafc', 40, 540, 880, 70, 12);
+      txt('#64748b', 24, 400, 'お問い合わせ：026-000-0000（平日 9:00〜17:00）', 70, 585);
+    },
+    // ---------- 2. 発表スライド ----------
+    () => {
+      rect('#1e293b', 0, 0, W, H);
+      bctx.fillStyle = '#334155'; bctx.beginPath(); bctx.arc(880, 60, 180, 0, Math.PI * 2); bctx.fill();
+      txt('#f97316', 26, 800, 'INFORMATION Ⅰ', 70, 100);                          // 橙×濃紺＝約5.2:1
+      txt('#ffffff', 62, 800, '情報格差はなぜ生まれるか', 70, 180);                // 白×濃紺＝約14.6:1
+      txt('#94a3b8', 28, 400, 'デジタル化が進む社会で、', 70, 240);
+      txt('#94a3b8', 28, 400, '「使える人」と「使えない人」の差が広がっています。', 70, 278);
+      rect('#0f766e', 70, 300, 250, 210, 14);
+      txt('#ffffff', 30, 800, '調査', 195, 360, 'center');
+      txt('#a7f3d0', 24, 400, 'アンケート', 195, 405, 'center');
+      txt('#a7f3d0', 24, 400, '312名', 195, 445, 'center');
+      rect('#334155', 350, 300, 540, 210, 14);
+      txt('#ffffff', 28, 800, '年代別 インターネット利用率', 380, 350);
+      const bars = [['10代', 200, '#22c55e'], ['30代', 190, '#22c55e'], ['60代', 130, '#eab308'], ['80代', 60, '#ef4444']];
+      bars.forEach(([lbl, v, c], i) => {
+        const x = 390 + i * 120;
+        rect(c, x, 470 - v * 0.5, 66, v * 0.5, 5);
+        txt('#e2e8f0', 20, 700, lbl, x + 33, 495, 'center');
+      });
+      txt('#64748b', 22, 400, '出典：総務省「通信利用動向調査」（数値はイメージです）', 70, 580);  // 灰×濃紺＝約2.7:1
+    },
+  ];
+
+  /* =========================================================
+     3. Canvas 表示とスポイト
+     ========================================================= */
+  const cv = $('cv');
+  const cctx = cv.getContext('2d');
+  let cursor = { x: Math.round(W / 2), y: Math.round(H / 2) };
+  let showCursor = false;
+
+  function drawSample(i) {
+    bctx.setTransform(1, 0, 0, 1, 0, 0);
+    bctx.clearRect(0, 0, W, H);
+    SAMPLES[i]();
+    render();
+  }
+
+  function drawUploaded(img) {
+    bctx.setTransform(1, 0, 0, 1, 0, 0);
+    bctx.fillStyle = '#ffffff'; bctx.fillRect(0, 0, W, H);
+    const s = Math.min(W / img.width, H / img.height);
+    const w = img.width * s, h = img.height * s;
+    bctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+    render();
+  }
+
+  function render() {
+    cctx.clearRect(0, 0, W, H);
+    cctx.drawImage(base, 0, 0);
+    if (!showCursor) return;
+    const { x, y } = cursor;
+    cctx.save();
+    cctx.lineWidth = 4; cctx.strokeStyle = '#ffffff';
+    cctx.beginPath(); cctx.arc(x, y, 16, 0, Math.PI * 2); cctx.stroke();
+    cctx.lineWidth = 2; cctx.strokeStyle = '#0f172a';
+    cctx.beginPath(); cctx.arc(x, y, 16, 0, Math.PI * 2); cctx.stroke();
+    cctx.beginPath();
+    cctx.moveTo(x - 26, y); cctx.lineTo(x - 20, y);
+    cctx.moveTo(x + 20, y); cctx.lineTo(x + 26, y);
+    cctx.moveTo(x, y - 26); cctx.lineTo(x, y - 20);
+    cctx.moveTo(x, y + 20); cctx.lineTo(x, y + 26);
+    cctx.stroke();
+    cctx.restore();
+  }
+
+  function colorAt(x, y) {
+    const d = bctx.getImageData(clamp(x, 0, W - 1), clamp(y, 0, H - 1), 1, 1).data;
+    return rgb2hex(d[0], d[1], d[2]);
+  }
+
+  const toCanvas = (e) => {
+    const r = cv.getBoundingClientRect();
+    return {
+      x: Math.round((e.clientX - r.left) * (W / r.width)),
+      y: Math.round((e.clientY - r.top) * (H / r.height)),
+    };
+  };
+
+  function preview(hex) {
+    $('hover-sw').style.background = hex;
+    $('hover-hex').textContent = hex;
+  }
+
+  function pick(hex) {
+    if (target === 'bg') setColor('bg', hex); else setColor('fg', hex);
+    live.textContent = `${hex} を${target === 'bg' ? '背景色' : '文字色'}に取り込みました`;
+  }
+
+  cv.addEventListener('pointermove', (e) => {
+    if (e.pointerType === 'touch') return;
+    const p = toCanvas(e);
+    preview(colorAt(p.x, p.y));
+  });
+  cv.addEventListener('click', (e) => {
+    const p = toCanvas(e);
+    cursor = p; showCursor = true; render();
+    const hex = colorAt(p.x, p.y);
+    preview(hex); pick(hex);
+  });
+  cv.addEventListener('keydown', (e) => {
+    const step = e.shiftKey ? 2 : 16;
+    const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+    if (moves[e.key]) {
+      e.preventDefault();
+      showCursor = true;
+      cursor.x = clamp(cursor.x + moves[e.key][0], 0, W - 1);
+      cursor.y = clamp(cursor.y + moves[e.key][1], 0, H - 1);
+      render();
+      preview(colorAt(cursor.x, cursor.y));
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      showCursor = true; render();
+      const hex = colorAt(cursor.x, cursor.y);
+      preview(hex); pick(hex);
+    }
+  });
+  cv.addEventListener('focus', () => { showCursor = true; render(); preview(colorAt(cursor.x, cursor.y)); });
+
+  /* サンプル切り替え */
+  const chips = [...document.querySelectorAll('.chip[data-sample]')];
+  chips.forEach((c) => c.addEventListener('click', () => {
+    chips.forEach((x) => x.setAttribute('aria-pressed', String(x === c)));
+    showCursor = false;
+    drawSample(Number(c.dataset.sample));
+  }));
+
+  $('file').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const fr = new FileReader();
+    fr.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        chips.forEach((x) => x.setAttribute('aria-pressed', 'false'));
+        showCursor = false;
+        drawUploaded(img);
+      };
+      img.onerror = () => { live.textContent = 'この画像は読み込めませんでした'; };
+      img.src = ev.target.result;
+    };
+    fr.readAsDataURL(f);   // データURLなのでCanvasが汚染されず、色を取り出せる
+  });
+
+  /* 取り込み先の切り替え */
+  let target = 'bg';
+  const setTarget = (t) => {
+    target = t;
+    $('to-bg').setAttribute('aria-pressed', String(t === 'bg'));
+    $('to-fg').setAttribute('aria-pressed', String(t === 'fg'));
+  };
+  $('to-bg').addEventListener('click', () => setTarget('bg'));
+  $('to-fg').addEventListener('click', () => setTarget('fg'));
+
+  /* =========================================================
+     4. 色の入力と判定
+     ========================================================= */
+  const DEFAULTS = { bg: '#D9F2EA', fg: '#FFFFFF' };
+  const state = { ...DEFAULTS };
+
+  function setColor(which, hex) {
+    state[which] = hex.toUpperCase();
+    $(`${which}-color`).value = state[which];
+    const input = $(`${which}-hex`);
+    if (document.activeElement !== input) input.value = state[which];
+    input.setAttribute('aria-invalid', 'false');
+    update();
+  }
+
+  ['bg', 'fg'].forEach((w) => {
+    $(`${w}-color`).addEventListener('input', (e) => setColor(w, e.target.value));
+    $(`${w}-hex`).addEventListener('input', (e) => {
+      let v = e.target.value.trim();
+      if (v && v[0] !== '#') v = '#' + v;
+      if (/^#[0-9a-fA-F]{3}$/.test(v)) v = '#' + v.slice(1).split('').map((c) => c + c).join('');
+      if (/^#[0-9a-fA-F]{6}$/.test(v)) { e.target.setAttribute('aria-invalid', 'false'); setColor(w, v); }
+      else e.target.setAttribute('aria-invalid', 'true');
     });
-
-    // 初期表示で1枚目のサンプル画像を表示
-    window.addEventListener('DOMContentLoaded', function() {
-        showSampleImage(sampleImages[0]);
+    $(`${w}-hex`).addEventListener('blur', (e) => {
+      e.target.value = state[w];
+      e.target.setAttribute('aria-invalid', 'false');
     });
-    // 画像アップロード時の処理
-    imageUpload.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(ev) {
-            img = new Image();
-            img.onload = function() {
-                let w = img.width, h = img.height;
-                const maxW = 400, maxH = 300;
-                if (w > maxW || h > maxH) {
-                    const scale = Math.min(maxW / w, maxH / h);
-                    w = Math.round(w * scale);
-                    h = Math.round(h * scale);
-                }
-                imageCanvas.width = w;
-                imageCanvas.height = h;
-                imageCanvas.style.display = 'block';
-                ctx.clearRect(0, 0, w, h);
-                ctx.drawImage(img, 0, 0, w, h);
-            };
-            img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
-        // アップロード時はサンプル画像ラジオボタンのチェックを外す
-        document.querySelectorAll('input[name="sampleImage"]').forEach(radio => radio.checked = false);
-    });
+  });
 
-    // スポイトで色取得
-    imageCanvas.addEventListener('click', function(e) {
-        if (!img) return;
-        const rect = imageCanvas.getBoundingClientRect();
-        const x = Math.floor((e.clientX - rect.left) * (imageCanvas.width / rect.width));
-        const y = Math.floor((e.clientY - rect.top) * (imageCanvas.height / rect.height));
-        const pixel = ctx.getImageData(x, y, 1, 1).data;
-        const rgbToHex = (r, g, b) => '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
-        const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
-        // どちらに反映するか
-        const pickTarget = document.querySelector('input[name="pickTarget"]:checked').value;
-        if (pickTarget === 'bg') {
-            bgColorPicker.value = hex;
-        } else {
-            textColorPicker.value = hex;
-        }
-        updateContrast();
-    });
+  $('swap').addEventListener('click', () => {
+    const { bg, fg } = state;
+    setColor('bg', fg); setColor('fg', bg);
+    live.textContent = '背景色と文字色を入れ替えました';
+  });
 
-    // HEXからRGBへ変換する関数
-    function hexToRgb(hex) {
-        const bigint = parseInt(hex.slice(1), 16);
-        const r = (bigint >> 16) & 255;
-        const g = (bigint >> 8) & 255;
-        const b = bigint & 255;
-        return [r, g, b];
+  $('reset').addEventListener('click', () => {
+    setColor('bg', DEFAULTS.bg); setColor('fg', DEFAULTS.fg);
+    $('fix-note').textContent = '';
+  });
+
+  $('fix').addEventListener('click', () => {
+    const fixed = adjustToward(state.fg, state.bg, 4.5);
+    if (!fixed) {
+      $('fix-note').textContent = 'この背景色では、どんな文字色でも 4.5:1 に届きません。背景色のほうを変えてみましょう。';
+      live.textContent = 'この背景色では 4.5:1 を満たせません';
+      return;
     }
+    const before = contrast(state.fg, state.bg).toFixed(2);
+    setColor('fg', fixed);
+    const after = contrast(state.fg, state.bg).toFixed(2);
+    $('fix-note').textContent = `文字色の明るさだけを変えました（${before}:1 → ${after}:1）。色みはそのままです。`;
+    live.textContent = `文字色を ${fixed} に調整しました。コントラスト比は ${after} 対 1 です`;
+  });
 
-    // 相対輝度を計算する関数
-    function getLuminance(rgb) {
-        const [r, g, b] = rgb.map(v => {
-            v /= 255;
-            return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-        });
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    }
-    
-    // WCAGレベルを判定する関数
-    function getWcagLevel(ratio) {
-        if (ratio >= 7) {
-            return '<span style="color: green;">AAA (適合)</span>';
-        }
-        if (ratio >= 4.5) {
-            return '<span style="color: #6a8f00;">AA (適合)</span>';
-        }
-        if (ratio >= 3) {
-            return '<span style="color: orange;">AA (大きい文字)</span>';
-        }
-        return '<span style="color: red;">不適合</span>';
-    }
+  function update() {
+    const r = contrast(state.fg, state.bg);
+    const level = r >= 7 ? 'aaa' : r >= 4.5 ? 'aa' : r >= 3 ? 'large' : 'ng';
 
+    $('ratio').dataset.level = level;
+    $('ratio-num').textContent = `${r.toFixed(2)} : 1`;
+    $('verdict').textContent =
+      level === 'aaa' ? 'とても見やすい（AAA 適合）'
+      : level === 'aa' ? '本文に使える（AA 適合）'
+      : level === 'large' ? '大きい文字なら使える（本文には足りない）'
+      : '基準を満たしていません';
 
-    // メインの計算と表示更新を行う関数
-    function updateContrast() {
-        // 1. カラーピッカーから色を取得
-        const bgColor = bgColorPicker.value;
-        const textColor = textColorPicker.value;
+    const set = (id, pass) => {
+      const el = $(id);
+      el.dataset.p = pass ? '1' : '0';
+      el.textContent = pass ? '○' : '×';
+      el.setAttribute('aria-label', pass ? '適合' : '不適合');
+    };
+    set('m-aa-normal',  r >= 4.5);
+    set('m-aaa-normal', r >= 7);
+    set('m-aa-large',   r >= 3);
+    set('m-aaa-large',  r >= 4.5);
+    set('m-aa-ui',      r >= 3);
 
-        // 2. プレビューに色を適用
-        preview.style.backgroundColor = bgColor;
-        preview.style.color = textColor;
+    const pv = $('preview');
+    pv.style.backgroundColor = state.bg;
+    pv.style.color = state.fg;
 
-        // 3. コントラスト比を計算
-        const bgRgb = hexToRgb(bgColor);
-        const textRgb = hexToRgb(textColor);
+    $('fix').disabled = r >= 4.5;
+  }
 
-        const lum1 = getLuminance(bgRgb);
-        const lum2 = getLuminance(textRgb);
-
-        const lighter = Math.max(lum1, lum2);
-        const darker = Math.min(lum1, lum2);
-        
-        const contrastRatio = (lighter + 0.05) / (darker + 0.05);
-
-        // 4. 結果を表示
-        contrastRatioEl.textContent = contrastRatio.toFixed(2);
-        wcagLevelEl.innerHTML = `判定: ${getWcagLevel(contrastRatio)}`;
-    }
-
-    // イベントリスナーを設定
-    bgColorPicker.addEventListener('input', updateContrast);
-    textColorPicker.addEventListener('input', updateContrast);
-
-    // 初期読み込み時に一度実行
-    window.addEventListener('load', updateContrast);
-
+  /* =========================================================
+     5. 起動
+     ========================================================= */
+  drawSample(0);
+  setColor('bg', DEFAULTS.bg);
+  setColor('fg', DEFAULTS.fg);
+  preview(DEFAULTS.bg);
+})();
 </script>
 
 </body>
