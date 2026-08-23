@@ -1,320 +1,717 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alt属性クイズ - Webアクセシビリティを学ぼう</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', 'Noto Sans JP', sans-serif;
-        }
-        .option-button {
-            transition: all 0.2s ease-in-out;
-        }
-        .option-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .correct {
-            background-color: #dcfce7 !important; /* green-100 */
-            border-color: #22c55e !important; /* green-500 */
-        }
-        .incorrect {
-            background-color: #fee2e2 !important; /* red-100 */
-            border-color: #ef4444 !important; /* red-500 */
-        }
-        .explanation-icon {
-            flex-shrink: 0;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>代替テキストクイズ ｜ この画像、どう説明する？</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   代替テキストクイズ
+   高等学校 情報Ⅰ 補助教材「情報アクセシビリティをはじめよう」
+   - 外部フレームワーク・外部画像に依存しない（フォント以外はオフラインで動作）
+   - 画像はすべてインラインSVGで描画し、実際に使われる文脈ごと見せる
+   ========================================================= */
+
+:root{
+  --ink:#1e293b; --ink-soft:#475569; --ink-mute:#64748b;
+  --line:#cbd5e1; --line-soft:#e2e8f0;
+  --bg:#f1f5f9; --surface:#fff; --surface-2:#f8fafc;
+
+  --brand:#0369a1; --brand-dark:#075985; --brand-tint:#f0f9ff; --brand-line:#7dd3fc;
+  --ok:#15803d; --ok-tint:#f0fdf4; --ok-line:#86efac;
+  --ng:#b91c1c; --ng-tint:#fef2f2; --ng-line:#fca5a5;
+  --gold:#78350f; --gold-tint:#fffbeb; --gold-line:#fcd34d;
+
+  --g1:#1d4ed8; --g2:#0f766e; --g3:#c2410c; --g4:#6b7280;
+
+  --r-sm:8px; --r-md:12px; --r-lg:18px; --r-xl:24px;
+  --shadow-1:0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.08);
+  --shadow-2:0 6px 18px rgba(15,23,42,.10);
+  --tap:44px;
+
+  --font:'M PLUS Rounded 1c','Hiragino Maru Gothic ProN','BIZ UDPGothic',
+         'Yu Gothic UI','Hiragino Sans','Noto Sans JP',system-ui,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0; font-family:var(--font); color:var(--ink); background:var(--bg);
+  line-height:1.75; -webkit-tap-highlight-color:transparent;
+}
+button{ font:inherit; color:inherit; }
+:focus-visible{ outline:3px solid var(--brand); outline-offset:2px; border-radius:6px; }
+@media (prefers-reduced-motion:reduce){ *{ animation-duration:.01ms!important; transition-duration:.01ms!important; } }
+
+/* ---------- 骨格 ---------- */
+.wrap{
+  max-width:820px; margin-inline:auto;
+  padding:clamp(12px,2.5vw,28px) clamp(12px,2.5vw,20px) calc(28px + env(safe-area-inset-bottom));
+}
+.pagehead{ text-align:center; margin-bottom:clamp(12px,2vw,20px); }
+.pagehead h1{ margin:0; font-size:clamp(1.4rem,1.1rem+1.4vw,2rem); font-weight:800; color:#334155; }
+.pagehead p{ margin:.4em auto 0; max-width:56ch; color:var(--ink-mute); font-size:clamp(.85rem,.8rem+.2vw,.98rem); }
+
+.app{
+  background:var(--surface); border:1px solid var(--line-soft);
+  border-radius:var(--r-xl); box-shadow:var(--shadow-2); overflow:hidden;
+}
+.screen{ display:none; }
+.screen.is-active{ display:block; }
+.pad{ padding:clamp(16px,3vw,30px); }
+
+/* ---------- 進捗バー ---------- */
+.hud{
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  padding:12px clamp(16px,3vw,30px);
+  border-bottom:1px solid var(--line-soft); background:var(--surface-2);
+}
+.hud .qno{ font-size:.85rem; font-weight:800; color:#334155; white-space:nowrap; }
+.bar{ flex:1 1 140px; height:8px; border-radius:999px; background:var(--line-soft); overflow:hidden; }
+.bar i{ display:block; height:100%; width:0%; background:var(--brand); border-radius:999px; transition:width .3s ease; }
+.hud .sc{ font-size:.85rem; font-weight:800; color:var(--ink-soft); white-space:nowrap; }
+.hud .sc b{ color:var(--brand-dark); font-size:1.05rem; }
+
+/* ---------- 状況 ---------- */
+.context{
+  background:var(--brand-tint); border:1px solid var(--brand-line);
+  border-radius:var(--r-md); padding:14px 16px; margin-bottom:18px;
+}
+.context h2{ margin:0 0 2px; font-size:.82rem; font-weight:800; letter-spacing:.06em; color:var(--brand-dark); }
+.context p{ margin:0; font-size:clamp(.92rem,.88rem+.2vw,1rem); color:#0c4a6e; }
+
+/* ---------- モックアップ ---------- */
+.mockwrap{ margin-bottom:20px; }
+.mock{
+  border:1px solid var(--line-soft); border-radius:var(--r-md);
+  background:var(--surface-2); padding:clamp(12px,2vw,20px);
+  overflow-x:auto;
+}
+.mock .m-h{ font-weight:800; color:#334155; font-size:1rem; }
+.mock .m-p{ font-size:.85rem; color:var(--ink-soft); margin:.3em 0 0; }
+.mock .m-lines{ display:flex; flex-direction:column; gap:6px; margin:10px 0; }
+.mock .m-lines i{ display:block; height:8px; border-radius:99px; background:var(--line-soft); }
+.mock .m-lines i:nth-child(2){ width:88%; }
+.mock .m-lines i:nth-child(3){ width:64%; }
+.mock .m-bar{
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  padding:10px 12px; background:#fff; border:1px solid var(--line-soft); border-radius:var(--r-sm);
+}
+.mock .m-nav{ display:flex; gap:14px; font-size:.8rem; color:var(--ink-soft); }
+.mock .m-row{ display:flex; align-items:center; gap:12px; }
+.mock .m-cols{ display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; }
+.mock .m-col{ flex:1 1 220px; min-width:180px; }
+.mock .m-cap{ font-size:.78rem; color:var(--ink-mute); margin-top:6px; }
+.mock .m-ok{
+  display:flex; align-items:center; gap:12px;
+  background:var(--ok-tint); border:1px solid var(--ok-line); border-radius:var(--r-md); padding:12px 14px;
+}
+.mock .m-ok span{ font-weight:800; color:#14532d; }
+.mock .m-step{ font-size:.8rem; font-weight:800; color:var(--brand-dark); }
+
+/* 出題対象の画像を囲む */
+.target{
+  position:relative; display:inline-block;
+  padding:6px; border-radius:var(--r-sm);
+  outline:2px dashed var(--brand); outline-offset:2px;
+  background:#fff;
+}
+.target::after{
+  content:"この画像";
+  position:absolute; top:-11px; left:8px;
+  font-size:.66rem; font-weight:800; color:#fff; background:var(--brand);
+  border-radius:999px; padding:0 8px; white-space:nowrap;
+}
+.target svg{ display:block; max-width:100%; height:auto; }
+
+/* ---------- 選択肢 ---------- */
+.qlabel{ font-size:.95rem; font-weight:800; color:#334155; margin:0 0 10px; }
+.options{ display:grid; grid-template-columns:minmax(0,1fr); gap:10px; }
+@media (min-width:640px){ .options{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.opt{
+  -webkit-appearance:none; appearance:none;
+  display:block; width:100%; text-align:left;
+  min-height:var(--tap); padding:14px 16px;
+  background:#fff; border:2px solid var(--line); border-radius:var(--r-md);
+  cursor:pointer; touch-action:manipulation;
+  transition:border-color .15s ease, background-color .15s ease, transform .12s ease;
+}
+.opt:hover:not(:disabled){ border-color:var(--brand); transform:translateY(-2px); box-shadow:var(--shadow-1); }
+.opt:disabled{ cursor:default; }
+.opt code{
+  font-family:var(--mono); font-size:.86rem; font-weight:700;
+  color:#334155; word-break:break-word;
+}
+.opt .why{
+  display:none; margin:8px 0 0; font-size:.82rem; line-height:1.6; color:var(--ink-soft);
+}
+.opt[data-state] .why{ display:block; }
+.opt[data-state="correct"]{ background:var(--ok-tint); border-color:var(--ok); }
+.opt[data-state="correct"] .why{ color:#14532d; }
+.opt[data-state="wrong"]{ background:var(--ng-tint); border-color:var(--ng); }
+.opt[data-state="wrong"] .why{ color:#7f1d1d; }
+.opt[data-state="other"]{ background:var(--surface-2); border-color:var(--line-soft); }
+.opt .flag{
+  display:none; font-size:.68rem; font-weight:800; border-radius:999px;
+  padding:1px 9px; margin-bottom:6px; width:fit-content;
+}
+.opt[data-state="correct"] .flag{ display:block; background:var(--ok); color:#fff; }
+.opt[data-state="wrong"] .flag{ display:block; background:var(--ng); color:#fff; }
+
+/* ---------- フィードバック ---------- */
+.feedback{ margin-top:18px; }
+.feedback[hidden]{ display:none; }
+.verdict{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  font-size:1.25rem; font-weight:800; margin-bottom:10px;
+}
+.verdict[data-ok="true"]{ color:var(--ok); }
+.verdict[data-ok="false"]{ color:var(--ng); }
+.gbadge{
+  font-size:.72rem; font-weight:800; color:#fff; border-radius:999px; padding:2px 12px;
+}
+.gbadge[data-g="1"]{ background:var(--g1); }
+.gbadge[data-g="2"]{ background:var(--g2); }
+.gbadge[data-g="3"]{ background:var(--g3); }
+.gbadge[data-g="4"]{ background:var(--g4); }
+.point{
+  background:var(--gold-tint); border:1px solid var(--gold-line); color:var(--gold);
+  border-radius:var(--r-md); padding:14px 16px; font-size:.92rem;
+}
+.point b{ font-weight:800; }
+
+/* ---------- ボタン ---------- */
+.btn{
+  -webkit-appearance:none; appearance:none;
+  min-height:var(--tap); padding:12px 26px; border-radius:999px;
+  border:2px solid transparent; font-weight:800; cursor:pointer;
+  box-shadow:var(--shadow-1); transition:background-color .12s ease, transform .12s ease;
+  touch-action:manipulation;
+}
+.btn:active{ transform:scale(.985); }
+.btn-primary{ background:var(--brand); color:#fff; font-size:1.02rem; }
+.btn-primary:hover{ background:var(--brand-dark); }
+.btn-ghost{ background:#fff; color:var(--ink-soft); border-color:var(--line); }
+.btn-ghost:hover{ background:#f1f5f9; }
+.btn-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:20px; }
+.btn-row .btn{ flex:1 1 220px; }
+
+/* ---------- 結果 ---------- */
+.result-score{ text-align:center; padding:6px 0 2px; }
+.result-score .big{ font-size:3.4rem; font-weight:800; color:var(--brand-dark); line-height:1.1; }
+.result-score .big small{ font-size:1.2rem; color:var(--ink-mute); font-weight:700; }
+.result-score p{ margin:.3em 0 0; color:var(--ink-soft); }
+
+.groups{ margin-top:22px; border:1px solid var(--line-soft); border-radius:var(--r-md); overflow:hidden; }
+.groups h3{ margin:0; padding:12px 14px; font-size:.95rem; font-weight:800; color:#334155; background:var(--surface-2); }
+.groups ul{ list-style:none; margin:0; padding:0; }
+.groups li{ display:flex; gap:12px; padding:12px 14px; border-top:1px solid var(--line-soft); }
+.groups .gno{
+  flex:none; width:26px; height:26px; border-radius:50%; color:#fff;
+  display:grid; place-items:center; font-size:.8rem; font-weight:800;
+}
+.groups li[data-g="1"] .gno{ background:var(--g1); }
+.groups li[data-g="2"] .gno{ background:var(--g2); }
+.groups li[data-g="3"] .gno{ background:var(--g3); }
+.groups li[data-g="4"] .gno{ background:var(--g4); }
+.groups b{ display:block; font-size:.9rem; color:#334155; }
+.groups span{ font-size:.84rem; color:var(--ink-soft); }
+
+.review{ margin-top:20px; }
+.review > summary{ cursor:pointer; min-height:38px; padding:6px 0; font-weight:800; color:var(--brand-dark); font-size:.92rem; }
+.review ol{ list-style:none; margin:10px 0 0; padding:0; display:flex; flex-direction:column; gap:8px; }
+.review li{
+  display:flex; gap:10px; align-items:flex-start;
+  padding:10px 12px; border-radius:var(--r-sm); border:1px solid var(--line-soft); background:var(--surface-2);
+}
+.review .mk{ flex:none; font-weight:800; font-size:1rem; }
+.review li[data-ok="true"] .mk{ color:var(--ok); }
+.review li[data-ok="false"] .mk{ color:var(--ng); }
+.review .txt{ min-width:0; }
+.review .txt em{ display:block; font-style:normal; font-size:.84rem; color:var(--ink-soft); }
+.review .txt code{ font-family:var(--mono); font-size:.8rem; color:#14532d; word-break:break-word; }
+
+.visually-hidden{
+  position:absolute!important; width:1px; height:1px; margin:-1px; padding:0;
+  overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0;
+}
+.credit{ text-align:center; margin:16px 0 0; font-size:.75rem; color:var(--ink-mute); }
+</style>
 </head>
-<body class="bg-gray-50 text-gray-800 flex items-center justify-center min-h-screen p-4">
+<body>
 
-    <div id="quiz-container" class="w-full max-w-3xl bg-white rounded-2xl shadow-lg p-6 md:p-8">
-        <!-- Header -->
-        <div class="text-center mb-6">
-            <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Alt属性クイズ ✍️</h1>
-            <p class="text-gray-600 mt-2">画像の状況に最適な代替テキストを選んで、Webアクセシビリティを学びましょう。</p>
-        </div>
-        
-        <!-- Progress Bar and Score -->
-        <div class="flex justify-between items-center mb-4">
-            <div class="w-full bg-gray-200 rounded-full h-2.5 mr-4">
-                <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%;"></div>
-            </div>
-            <div class="text-right">
-                <span class="text-sm font-semibold text-gray-700">スコア: <span id="score">0</span></span>
-            </div>
-        </div>
+<div class="wrap">
+  <header class="pagehead">
+    <h1>この画像、どう説明する？</h1>
+    <p>画像に付ける代替テキスト（alt）は、画像の<strong>目的</strong>によって変わります。実際のページの形で見ながら考えてみましょう。</p>
+  </header>
 
-        <!-- Quiz Content -->
-        <div id="quiz-content">
-            <!-- Question Context -->
-            <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-800 p-4 rounded-r-lg mb-6">
-                <h3 class="font-bold text-lg mb-1">状況</h3>
-                <p id="context" class="text-sm md:text-base"></p>
-            </div>
+  <div class="app">
 
-            <!-- Image -->
-            <div class="mb-6 flex justify-center">
-                <img id="quiz-image" src="" alt="クイズ用の画像" class="max-w-full h-auto max-h-64 rounded-lg shadow-md object-contain">
-            </div>
-            
-            <!-- Options -->
-            <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Options will be dynamically inserted here -->
-            </div>
+    <!-- ============ クイズ ============ -->
+    <section class="screen is-active" id="s-quiz" aria-labelledby="q-context-title">
+      <div class="hud">
+        <span class="qno" id="qno">問題 1 / 8</span>
+        <span class="bar" aria-hidden="true"><i id="bar"></i></span>
+        <span class="sc">正解 <b id="score">0</b></span>
+      </div>
 
-            <!-- Feedback -->
-            <div id="feedback-container" class="mt-6 hidden">
-                <h3 id="feedback-title" class="text-xl font-bold mb-2"></h3>
-                <div id="explanation" class="bg-gray-100 p-4 rounded-lg flex items-start space-x-3">
-                    <span id="explanation-icon" class="text-2xl explanation-icon"></span>
-                    <p class="text-gray-700"></p>
-                </div>
-            </div>
-
-            <!-- Control Buttons -->
-            <div class="mt-8 text-center">
-                <button id="next-button" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition-colors duration-300 w-full md:w-auto hidden">次の問題へ</button>
-            </div>
+      <div class="pad">
+        <div class="context">
+          <h2 id="q-context-title">状況</h2>
+          <p id="context"></p>
         </div>
 
-        <!-- Quiz Result -->
-        <div id="result-container" class="text-center hidden">
-            <h2 class="text-3xl font-bold text-gray-900 mb-2">クイズ終了！</h2>
-            <p class="text-lg text-gray-600 mb-4">あなたの最終スコアは...</p>
-            <p class="text-5xl font-extrabold text-blue-600 mb-6"><span id="final-score">0</span> / <span id="total-questions">0</span></p>
-            <p class="mb-8">素晴らしいです！代替テキストの基本をマスターしましたね。</p>
-            <button id="restart-button" class="bg-gray-800 text-white font-bold py-3 px-8 rounded-lg hover:bg-gray-900 transition-colors duration-300 w-full md:w-auto">もう一度挑戦する</button>
+        <div class="mockwrap">
+          <div class="mock" id="mock"></div>
         </div>
-    </div>
 
-    <!-- JavaScriptファイルをモジュールとして読み込む -->
-    <script>
-        // クイズデータをHTMLファイル内に直接定義
-        const quizData = [
-            {
-                image: "https://placehold.co/600x300/e2e8f0/334155?text=Decorative+Wave",
-                context: "この画像は、セクションの区切りとして使われている単なる装飾です。情報としての意味はありません。",
-                options: [
-                    { text: 'alt="青い波の画像"', correct: false, explanation: "装飾的な画像に説明的なaltテキストを入れると、スクリーンリーダーが不要な情報を読み上げてしまい、ユーザー体験を損ないます。" },
-                    { text: 'alt=""', correct: true, explanation: "正解です。装飾的な画像で情報を持たない場合は、alt属性を空に設定します。これにより、スクリーンリーダーは画像を無視し、ユーザーに不要な情報を伝えません。" },
-                    { text: 'alt="区切り"', correct: false, explanation: "「区切り」というテキストも不要な情報です。視覚的なデザイン要素は、スクリーンリーダーの利用者には意味をなさないことが多いです。" },
-                    { text: '(alt属性なし)', correct: false, explanation: "alt属性を省略してはいけません。省略すると、一部のスクリーンリーダーが画像のファイル名を読み上げてしまう可能性があり、かえって混乱を招きます。" }
-                ]
-            },
-            {
-                image: "https://placehold.co/400x100/4285F4/ffffff?text=MyBrand+Logo",
-                context: "ヘッダーにある企業ロゴです。このロゴをクリックすると、サイトのトップページに戻ります。",
-                options: [
-                    { text: 'alt="ロゴ"', correct: false, explanation: "「ロゴ」だけでは不十分です。この画像がリンクであり、どこに遷移するのかがスクリーンリーダーの利用者には分かりません。" },
-                    { text: 'alt="MyBrandのカラフルなロゴ"', correct: false, explanation: "画像がリンクである場合、その見た目の説明よりもリンクの遷移先や機能が重要です。" },
-                    { text: 'alt="MyBrand トップページへ"', correct: true, explanation: "正解です。画像がリンクの場合、altテキストはそのリンクの遷移先や目的を説明する必要があります。「トップページへ」と記述することで、ユーザーは何が起こるかを正確に理解できます。" },
-                    { text: 'alt=""', correct: false, explanation: "このロゴはサイトのナビゲーションにおいて重要な機能を持つため、alt属性を空にしてはいけません。スクリーンリーダーの利用者がトップページに戻れなくなってしまいます。" }
-                ]
-            },
-            {
-                image: "https://placehold.co/500x350/ffffff/333333?text=Bar+Chart%0A%0AJan:+150%0AFeb:+250%0AMar:+200",
-                context: "月間の製品売上を示す棒グラフです。この記事の主要なコンテンツです。",
-                options: [
-                    { text: 'alt="売上を示す棒グラフ"', correct: false, explanation: "これではグラフが伝えている具体的な情報が全く分かりません。視覚的なユーザーが得る情報と等価ではありません。" },
-                    { text: 'alt="1月から3月までの製品売上。1月は150個、2月は250個、3月は200個の売上。"', correct: true, explanation: "正解です。グラフや図表などの情報を含む画像では、その画像が伝えている情報をすべてテキストで記述する必要があります。これにより、視覚的な情報と等価な情報をスクリーンリーダーの利用者も得ることができます。" },
-                    { text: 'alt="右肩上がりのグラフ"', correct: false, explanation: "グラフの傾向を伝えるだけでは不十分です。具体的なデータが重要です。" },
-                    { text: 'alt=""', correct: false, explanation: "グラフは重要な情報を含んでいるため、alt属性を空にすると、その情報が完全に失われてしまいます。" }
-                ]
-            },
-            {
-                image: "https://placehold.co/400x500/cccccc/333333?text=Dr.+Hayashi",
-                context: "科学雑誌の記事で、宇宙飛行士の林博士を紹介している写真です。",
-                options: [
-                    { text: 'alt="宇宙服を着た人物"', correct: false, explanation: "誰なのかが分からないため、不十分です。記事の文脈上、この人物が誰であるかは重要な情報です。" },
-                    { text: 'alt="宇宙飛行士の林博士"', correct: true, explanation: "正解です。写真の人物が誰であるかが文脈上重要な場合、その人物の名前を明記するのが適切です。「写真」という言葉は不要です。" },
-                    { text: 'alt=""', correct: false, explanation: "この写真は記事の主要な情報（林博士の紹介）を伝えているため、alt属性を空にしてはいけません。" },
-                    { text: 'alt="林博士の写真"', correct: false, explanation: "スクリーンリーダーは画像であることを伝えるため、「写真」という言葉は冗長になります。内容を簡潔に伝えましょう。" }
-                ]
-            },
-            {
-                image: "https://placehold.co/600x300/f87171/ffffff?text=SUMMER+SALE%0A50%25+OFF",
-                context: "ECサイトに掲載されている、サマーセールの告知バナーです。",
-                options: [
-                    { text: 'alt="サマーセール 50% OFF"', correct: true, explanation: "正解です。画像内にテキストが含まれている場合、そのテキスト情報をalt属性に記述するのが基本です。これにより、画像が見えないユーザーにも同じ情報が伝わります。" },
-                    { text: 'alt="赤い背景のバナー"', correct: false, explanation: "画像の色やデザインよりも、画像に含まれるテキスト情報の方がはるかに重要です。" },
-                    { text: 'alt="セールのお知らせ"', correct: false, explanation: "「50% OFF」という重要な情報が欠けています。画像内のテキストは正確に記述しましょう。" },
-                    { text: 'alt="クリックして詳細を見る"', correct: false, explanation: "このテキストは、もし画像がリンクである場合のaltテキストとして適切ですが、今回は単なる告知バナーなので、画像の内容を説明するのが適切です。" }
-                ]
-            },
-            {
-                image: "https://placehold.co/100x100/f0f9ff/0284c7?text=↓",
-                context: "レポートの横にあるダウンロードアイコンです。クリックするとPDFファイルをダウンロードします。",
-                options: [
-                    { text: 'alt="ダウンロードアイコン"', correct: false, explanation: "アイコンの見た目を説明しても、それが何をするためのものかが伝わりません。" },
-                    { text: 'alt="レポートをダウンロード (PDF)"', correct: true, explanation: "正解です。アイコンがリンクやボタンとして機能する場合、altテキストはその機能や目的（何が起こるか）を説明するべきです。ファイル形式を伝えるのも親切です。" },
-                    { text: 'alt="下向きの矢印"', correct: false, explanation: "アイコンの見た目の説明は、その機能が分からないユーザーにとっては意味がありません。" },
-                    { text: 'alt=""', correct: false, explanation: "これは重要な機能を持つ要素なので、alt属性を空にすると、スクリーンリーダーの利用者はダウンロード機能に気づけなくなってしまいます。" }
-                ]
-            },
-            {
-                image: "https://placehold.co/400x400/34d399/ffffff?text=✔",
-                context: "入力フォームの送信が成功したことを示すアイコンです。アイコンの隣には「メッセージを送信しました」というテキストが表示されています。",
-                options: [
-                    { text: 'alt="成功"', correct: false, explanation: "隣に「メッセージを送信しました」というテキストがあるため、altテキストで「成功」と伝えると「成功、メッセージを送信しました」と重複した情報を読み上げてしまいます。" },
-                    { text: 'alt="緑のチェックマーク"', correct: false, explanation: "アイコンの見た目の説明は不要です。また、隣のテキストと情報が重複してしまいます。" },
-                    { text: 'alt=""', correct: true, explanation: "正解です。画像の隣に同等の情報（この場合は「メッセージを送信しました」）を伝えるテキストがある場合、画像は装飾的な役割と見なせます。alt属性を空にすることで、スクリーンリーダーが同じ情報を二度読み上げるのを防ぎます。" },
-                    { text: 'alt="送信成功アイコン"', correct: false, explanation: "これも隣のテキストと情報が重複してしまいます。「アイコン」という言葉はaltテキストに含める必要はありません。" }
-                ]
-            },
-            {
-                image: "https://placehold.co/600x400/fef3c7/a16207?text=Kneading+Dough",
-                context: "パン作りのレシピサイトで、「生地をこねる」というステップを説明している写真です。",
-                options: [
-                    { text: 'alt="パン生地"', correct: false, explanation: "写真に写っているモノを説明しているだけでは、「何をしているか」という最も重要な情報が伝わりません。" },
-                    { text: 'alt="両手でパン生地を力強くこねている様子"', correct: true, explanation: "正解です。手順を説明する文脈では、写真が示している「行動」を具体的に記述することが重要です。「生地をこねる」というステップの内容が明確に伝わります。" },
-                    { text: 'alt="パン作りの工程"', correct: false, explanation: "あまりにも漠然としており、このステップで具体的に何をするべきかが分かりません。" },
-                    { text: 'alt=""', correct: false, explanation: "この写真はレシピの重要なステップを視覚的に補完しているため、情報価値があります。alt属性を空にしてはいけません。" }
-                ]
-            }
-        ];
+        <p class="qlabel" id="qlabel">この画像の代替テキストとして、いちばん適切なものは？</p>
+        <div class="options" id="options" role="group" aria-labelledby="qlabel"></div>
 
-        // DOM Elements
-        const quizContainer = document.getElementById('quiz-container');
-        const quizContent = document.getElementById('quiz-content');
-        const resultContainer = document.getElementById('result-container');
-        const contextEl = document.getElementById('context');
-        const quizImageEl = document.getElementById('quiz-image');
-        const optionsContainer = document.getElementById('options-container');
-        const feedbackContainer = document.getElementById('feedback-container');
-        const feedbackTitleEl = document.getElementById('feedback-title');
-        const explanationEl = document.getElementById('explanation').querySelector('p');
-        const explanationIconEl = document.getElementById('explanation-icon');
-        const nextButton = document.getElementById('next-button');
-        const restartButton = document.getElementById('restart-button');
-        const progressBar = document.getElementById('progress-bar');
-        const scoreEl = document.getElementById('score');
-        const finalScoreEl = document.getElementById('final-score');
-        const totalQuestionsEl = document.getElementById('total-questions');
+        <div class="feedback" id="feedback" hidden>
+          <p class="verdict" id="verdict"></p>
+          <p class="point" id="point"></p>
+          <div class="btn-row">
+            <button type="button" class="btn btn-primary" id="btn-next">次の問題へ</button>
+          </div>
+        </div>
+      </div>
+    </section>
 
-        // Quiz State
-        let currentQuestionIndex = 0;
-        let score = 0;
-        let answerSelected = false;
+    <!-- ============ 結果 ============ -->
+    <section class="screen pad" id="s-result" aria-labelledby="t-result">
+      <div class="result-score">
+        <h2 id="t-result" style="margin:0;font-size:1.6rem;font-weight:800;color:#334155;">クイズ終了！</h2>
+        <p class="big" style="margin:.2em 0 0"><span id="final">0</span><small> / <span id="total">8</span> 問正解</small></p>
+        <p id="result-msg"></p>
+      </div>
 
-        function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-        }
+      <div class="groups">
+        <h3>画像は「目的」で4つのグループに分けられる</h3>
+        <ul>
+          <li data-g="1"><span class="gno">1</span><span><b>機能的な画像</b><span>押すと何かが起きる。ロゴ・アイコン・ボタン。<br>見た目ではなく<strong>「どこへ行けるか・何ができるか」</strong>を書く。</span></span></li>
+          <li data-g="2"><span class="gno">2</span><span><b>説明的な画像</b><span>写真・イラスト・バナー。<br><strong>「何であり、何をしているか」</strong>を簡潔に。画像内の文字はすべて書く。</span></span></li>
+          <li data-g="3"><span class="gno">3</span><span><b>複雑な画像</b><span>グラフ・図解。<br>全部を書き写すのではなく<strong>「伝えたい結論や数値」</strong>を要約する。</span></span></li>
+          <li data-g="4"><span class="gno">4</span><span><b>装飾的な画像</b><span>飾り、または隣に同じ内容のテキストがあるもの。<br><code>alt=""</code> と<strong>空にする</strong>（属性ごと省略はしない）。</span></span></li>
+        </ul>
+      </div>
 
-        function startQuiz() {
-            currentQuestionIndex = 0;
-            score = 0;
-            answerSelected = false;
-            shuffleArray(quizData); // Shuffle questions at the start of the quiz
-            quizContent.style.display = 'block';
-            resultContainer.style.display = 'none';
-            nextButton.style.display = 'none';
-            updateScore();
-            loadQuestion();
-        }
+      <details class="review" id="review">
+        <summary>解答をふりかえる</summary>
+        <ol id="review-list"></ol>
+      </details>
 
-        function loadQuestion() {
-            answerSelected = false;
-            feedbackContainer.style.display = 'none';
-            nextButton.style.display = 'none';
-            
-            const currentQuestion = quizData[currentQuestionIndex];
-            
-            contextEl.textContent = currentQuestion.context;
-            quizImageEl.src = currentQuestion.image;
-            
-            optionsContainer.innerHTML = '';
-            
-            const shuffledOptions = [...currentQuestion.options];
-            shuffleArray(shuffledOptions);
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary" id="btn-again">もう一度挑戦する</button>
+        <button type="button" class="btn btn-ghost" id="btn-wrong" hidden>間違えた問題だけやり直す</button>
+      </div>
+    </section>
 
-            shuffledOptions.forEach((option, index) => {
-                const button = document.createElement('button');
-                button.innerHTML = `<code class="bg-gray-200 text-gray-800 px-2 py-1 rounded">${option.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code>`;
-                button.classList.add('option-button', 'w-full', 'p-4', 'bg-white', 'border-2', 'border-gray-300', 'rounded-lg', 'text-left', 'hover:border-blue-500', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-400', 'focus:ring-opacity-75');
-                button.dataset.correct = option.correct;
-                button.dataset.explanation = option.explanation;
-                button.onclick = () => selectAnswer(button);
-                optionsContainer.appendChild(button);
-            });
+  </div>
 
-            updateProgress();
-        }
+  <p class="credit">高等学校 情報Ⅰ 補助教材「つくって、つたえる、みんなのために」</p>
+</div>
 
-        function selectAnswer(selectedButton) {
-            if (answerSelected) return;
-            answerSelected = true;
+<p class="visually-hidden" id="live" role="status" aria-live="polite"></p>
 
-            const isCorrect = selectedButton.dataset.correct === 'true';
-            const explanation = selectedButton.dataset.explanation;
+<script>
+(() => {
+  'use strict';
 
-            if (isCorrect) {
-                score++;
-                feedbackTitleEl.textContent = '正解です！ 🎉';
-                feedbackTitleEl.className = 'text-xl font-bold mb-2 text-green-600';
-                explanationIconEl.textContent = '💡';
-                selectedButton.classList.add('correct');
-            } else {
-                feedbackTitleEl.textContent = '残念！';
-                feedbackTitleEl.className = 'text-xl font-bold mb-2 text-red-600';
-                explanationIconEl.textContent = '🤔';
-                selectedButton.classList.add('incorrect');
-                
-                const correctButton = Array.from(optionsContainer.children).find(btn => btn.dataset.correct === 'true');
-                if(correctButton) {
-                    correctButton.classList.add('correct');
-                }
-            }
+  /* =========================================================
+     画像モックアップ（すべてインラインSVG＝外部通信なし）
+     target() で囲んだ要素が「出題対象の画像」
+     ========================================================= */
+  const svg = (viewBox, inner, title, w) =>
+    `<svg viewBox="${viewBox}" role="img" aria-label="${title}" ${w ? `style="width:${w}"` : ''}>${inner}</svg>`;
 
-            explanationEl.textContent = explanation;
-            feedbackContainer.style.display = 'block';
-            nextButton.style.display = 'inline-block';
+  const wrapTarget = (s) => `<span class="target">${s}</span>`;
 
-            Array.from(optionsContainer.children).forEach(btn => {
-                btn.disabled = true;
-            });
+  const MOCK = {
+    wave: () => `
+      <p class="m-h">部活動の紹介</p>
+      <div class="m-lines"><i></i><i></i><i></i></div>
+      ${wrapTarget(svg('0 0 420 56',
+        `<path d="M0,30 C52,4 105,54 158,30 C210,6 262,54 315,30 C368,6 420,50 420,30 L420,56 L0,56 Z" fill="#bae6fd"/>
+         <path d="M0,38 C52,14 105,62 158,38 C210,14 262,62 315,38 C368,14 420,58 420,38 L420,56 L0,56 Z" fill="#7dd3fc" opacity=".7"/>`,
+        '青い波形の帯', 'min(100%, 420px)'))}
+      <p class="m-h" style="margin-top:10px">学校行事</p>
+      <div class="m-lines"><i></i><i></i></div>`,
 
-            updateScore();
-        }
+    logo: () => `
+      <div class="m-bar">
+        ${wrapTarget(svg('0 0 190 44',
+          `<rect x="2" y="6" width="32" height="32" rx="9" fill="#0369a1"/>
+           <path d="M10 30 L18 15 L26 30" stroke="#fff" stroke-width="3.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+           <text x="44" y="29" font-size="18" font-weight="800" fill="#0f172a" font-family="inherit">MyBrand</text>`,
+          'MyBrandのロゴマーク', '190px'))}
+        <span class="m-nav"><span>製品</span><span>会社情報</span><span>お問い合わせ</span></span>
+      </div>
+      <p class="m-cap">※ このロゴはリンクになっていて、押すとトップページに戻ります。</p>`,
 
+    chart: () => `
+      <p class="m-h">第2四半期 売上レポート</p>
+      <p class="m-p">今期の製品売上は次のとおりです。</p>
+      <div style="margin-top:10px">
+      ${wrapTarget(svg('0 0 320 200',
+        `<line x1="38" y1="12" x2="38" y2="164" stroke="#94a3b8" stroke-width="2"/>
+         <line x1="38" y1="164" x2="308" y2="164" stroke="#94a3b8" stroke-width="2"/>
+         <text x="8" y="20" font-size="11" fill="#64748b" font-family="inherit">300</text>
+         <text x="8" y="94" font-size="11" fill="#64748b" font-family="inherit">150</text>
+         <text x="14" y="168" font-size="11" fill="#64748b" font-family="inherit">0</text>
+         <rect x="62"  y="90"  width="52" height="74"  fill="#0369a1" rx="3"/>
+         <rect x="146" y="40"  width="52" height="124" fill="#0369a1" rx="3"/>
+         <rect x="230" y="65"  width="52" height="99"  fill="#0369a1" rx="3"/>
+         <text x="88"  y="84"  font-size="13" font-weight="700" fill="#0f172a" text-anchor="middle" font-family="inherit">150</text>
+         <text x="172" y="34"  font-size="13" font-weight="700" fill="#0f172a" text-anchor="middle" font-family="inherit">250</text>
+         <text x="256" y="59"  font-size="13" font-weight="700" fill="#0f172a" text-anchor="middle" font-family="inherit">200</text>
+         <text x="88"  y="182" font-size="12" fill="#334155" text-anchor="middle" font-family="inherit">1月</text>
+         <text x="172" y="182" font-size="12" fill="#334155" text-anchor="middle" font-family="inherit">2月</text>
+         <text x="256" y="182" font-size="12" fill="#334155" text-anchor="middle" font-family="inherit">3月</text>`,
+        '棒グラフ。1月150、2月250、3月200', 'min(100%, 320px)'))}
+      </div>`,
 
+    portrait: () => `
+      <div class="m-cols">
+        <div style="flex:none">
+        ${wrapTarget(svg('0 0 150 190',
+          `<rect width="150" height="190" rx="8" fill="#e0f2fe"/>
+           <circle cx="75" cy="150" r="56" fill="#f1f5f9"/>
+           <rect x="52" y="96" width="46" height="26" rx="10" fill="#cbd5e1"/>
+           <circle cx="75" cy="70" r="42" fill="#f8fafc" stroke="#94a3b8" stroke-width="3"/>
+           <circle cx="75" cy="72" r="31" fill="#fde8d7"/>
+           <circle cx="65" cy="70" r="3.4" fill="#334155"/>
+           <circle cx="86" cy="70" r="3.4" fill="#334155"/>
+           <path d="M66 84 Q75.5 91 85 84" stroke="#334155" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+           <path d="M46 62 Q56 40 75 38" stroke="#7dd3fc" stroke-width="5" fill="none" stroke-linecap="round"/>
+           <rect x="58" y="128" width="34" height="9" rx="4" fill="#0369a1"/>`,
+          '宇宙服のヘルメットをかぶり、ほほえむ人物', '150px'))}
+        </div>
+        <div class="m-col">
+          <p class="m-h">宇宙で暮らすということ</p>
+          <p class="m-p">今回お話をうかがったのは、宇宙飛行士の林博士。半年間の宇宙滞在を終え、先月地球に帰還したばかりだ。</p>
+          <div class="m-lines"><i></i><i></i><i></i></div>
+        </div>
+      </div>`,
 
-        function showNextQuestion() {
-            currentQuestionIndex++;
-            if (currentQuestionIndex < quizData.length) {
-                loadQuestion();
-            } else {
-                showResults();
-            }
-        }
+    banner: () => `
+      <p class="m-h">オンラインショップ</p>
+      <div style="margin-top:10px">
+      ${wrapTarget(svg('0 0 420 130',
+        `<rect width="420" height="130" rx="8" fill="#e11d48"/>
+         <circle cx="374" cy="24" r="58" fill="#f43f5e" opacity=".55"/>
+         <circle cx="46" cy="118" r="42" fill="#f43f5e" opacity=".55"/>
+         <text x="210" y="52" font-size="27" font-weight="800" fill="#fff" text-anchor="middle" font-family="inherit">サマーセール</text>
+         <text x="210" y="99" font-size="36" font-weight="800" fill="#fde047" text-anchor="middle" font-family="inherit">50% OFF</text>`,
+        'サマーセール、50パーセントオフ と書かれた赤いバナー', 'min(100%, 420px)'))}
+      </div>`,
 
-        function showResults() {
-            quizContent.style.display = 'none';
-            resultContainer.style.display = 'block';
-            finalScoreEl.textContent = score;
-            totalQuestionsEl.textContent = quizData.length;
-        }
+    download: () => `
+      <div class="m-row" style="background:#fff;border:1px solid var(--line-soft);border-radius:8px;padding:12px 14px;">
+        <span style="flex:1">
+          <b style="font-size:.95rem;color:#334155">2026年度 調査レポート</b>
+          <span class="m-cap" style="display:block;margin:0">発行：2026年7月</span>
+        </span>
+        ${wrapTarget(svg('0 0 56 56',
+          `<circle cx="28" cy="28" r="26" fill="#f0f9ff" stroke="#7dd3fc" stroke-width="2"/>
+           <path d="M28 14 L28 33" stroke="#0369a1" stroke-width="4" stroke-linecap="round"/>
+           <path d="M20 26 L28 34 L36 26" stroke="#0369a1" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+           <path d="M17 40 L39 40" stroke="#0369a1" stroke-width="4" stroke-linecap="round"/>`,
+          '下向き矢印のアイコン', '56px'))}
+      </div>
+      <p class="m-cap">※ このアイコンを押すと、PDFファイルのダウンロードが始まります。</p>`,
 
-        function updateScore() {
-            scoreEl.textContent = score;
-        }
+    check: () => `
+      <div class="m-ok">
+        ${wrapTarget(svg('0 0 48 48',
+          `<circle cx="24" cy="24" r="22" fill="#22c55e"/>
+           <path d="M14 25 L21 32 L34 17" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+          '緑の丸にチェックマーク', '48px'))}
+        <span>メッセージを送信しました</span>
+      </div>
+      <p class="m-cap">※ アイコンのすぐ隣に「メッセージを送信しました」という文字が表示されています。</p>`,
 
-        function updateProgress() {
-            const progress = ((currentQuestionIndex) / quizData.length) * 100;
-            progressBar.style.width = `${progress}%`;
-        }
-        
-        nextButton.addEventListener('click', showNextQuestion);
-        restartButton.addEventListener('click', startQuiz);
+    dough: () => `
+      <p class="m-step">手順 3 / 6</p>
+      <p class="m-h">生地をこねる</p>
+      <div style="margin-top:10px">
+      ${wrapTarget(svg('0 0 300 170',
+        `<rect width="300" height="170" rx="8" fill="#fef3c7"/>
+         <circle cx="72" cy="34" r="4" fill="#fff" opacity=".85"/>
+         <circle cx="86" cy="22" r="2.6" fill="#fff" opacity=".85"/>
+         <circle cx="226" cy="30" r="3.4" fill="#fff" opacity=".85"/>
+         <path d="M58 108 h184 a13 13 0 0 1 -13 13 q-9 33 -79 33 q-70 0 -79 -33 a13 13 0 0 1 -13 -13 z" fill="#d8ab6d"/>
+         <ellipse cx="150" cy="108" rx="92" ry="14" fill="#f0d7a8"/>
+         <ellipse cx="150" cy="104" rx="54" ry="21" fill="#f8ecd2" stroke="#e2c89a" stroke-width="2"/>
+         <g stroke="#fde8d7" stroke-width="21" stroke-linecap="round">
+           <path d="M104 62 L82 20"/><path d="M196 62 L218 20"/>
+         </g>
+         <g fill="#fde8d7" stroke="#e6bfa4" stroke-width="2" stroke-linejoin="round">
+           <path d="M126 96 q-14 10 -30 4 q-18 -7 -16 -26 q2 -18 20 -19 q19 -1 26 14 q6 14 0 27 z"/>
+           <path d="M174 96 q14 10 30 4 q18 -7 16 -26 q-2 -18 -20 -19 q-19 -1 -26 14 q-6 14 0 27 z"/>
+         </g>
+         <g stroke="#e6bfa4" stroke-width="2" stroke-linecap="round" fill="none">
+           <path d="M92 88 q10 4 22 0"/><path d="M208 88 q-10 4 -22 0"/>
+         </g>`,
+        '両手でボウルの中の生地をこねている様子', 'min(100%, 300px)'))}
+      </div>`,
+  };
 
-        startQuiz();
-    </script>
+  /* =========================================================
+     問題データ
+     group: 1 機能 / 2 説明 / 3 複雑 / 4 装飾
+     ========================================================= */
+  const QUESTIONS = [
+    {
+      mock: MOCK.wave, group: 4, short: 'セクションの区切りの波',
+      context: 'セクションの区切りとして置かれた、ただの飾りの画像です。情報としての意味はありません。',
+      point: '飾りの画像は <b>alt=""</b> と空にします。すると読み上げソフトは「意味のない装飾」と判断して読み飛ばしてくれます。不要な情報を読ませないことも、大切な配慮です。',
+      options: [
+        { t:'alt="青い波の画像"', ok:false, why:'飾りに説明を付けると、読み上げソフトが不要な情報を読み上げてしまい、かえって使いにくくなります。' },
+        { t:'alt=""',            ok:true,  why:'正解。情報を持たない飾りの画像は、alt を空にして読み飛ばしてもらいます。' },
+        { t:'alt="区切り"',      ok:false, why:'「区切り」も不要な情報です。見た目のためのデザイン要素は、音声で伝える意味がありません。' },
+        { t:'（alt属性を書かない）', ok:false, why:'属性ごと省略してはいけません。省略すると、読み上げソフトが画像のファイル名（例：wave-01.png）を読んでしまうことがあります。' },
+      ],
+    },
+    {
+      mock: MOCK.logo, group: 1, short: 'トップページに戻るロゴ',
+      context: 'ヘッダーにある企業ロゴです。このロゴを押すと、サイトのトップページに戻ります。',
+      point: '画像がリンクやボタンのときは、<b>見た目ではなく「どこへ行けるか・何ができるか」</b>を書きます。これは「機能的な画像」の考え方です。',
+      options: [
+        { t:'alt="ロゴ"',                  ok:false, why:'「ロゴ」だけでは、それがリンクであることも、どこへ行くのかも分かりません。' },
+        { t:'alt="MyBrandのカラフルなロゴ"', ok:false, why:'リンクになっている画像では、見た目の説明よりも「押すと何が起きるか」が重要です。' },
+        { t:'alt="MyBrand トップページへ"',  ok:true,  why:'正解。リンクの行き先が分かるので、押す前に何が起きるか予測できます。' },
+        { t:'alt=""',                      ok:false, why:'このロゴはナビゲーションの機能を持っています。空にすると、読み上げソフトの利用者はトップページに戻る手段を失ってしまいます。' },
+      ],
+    },
+    {
+      mock: MOCK.chart, group: 3, short: '月間売上の棒グラフ',
+      context: '記事の中心となる、月間の製品売上を示す棒グラフです。',
+      point: 'グラフや図解は、<b>そのグラフが伝えたい結論や数値</b>を要約して書きます。詳しい数字は、画像の近くの本文にも書いておくとさらに親切です。',
+      options: [
+        { t:'alt="売上を示す棒グラフ"', ok:false, why:'グラフが何を伝えているのかが分かりません。目で見た人が得る情報と釣り合っていません。' },
+        { t:'alt="1月から3月の製品売上。1月150個、2月250個、3月200個。"', ok:true, why:'正解。グラフが伝えている情報が文字でも伝わります。' },
+        { t:'alt="右肩上がりのグラフ"', ok:false, why:'傾向だけでは不十分ですし、そもそも2月から3月は下がっています。' },
+        { t:'alt=""',                 ok:false, why:'重要な情報を持つ画像なので、空にすると情報がまるごと失われます。' },
+      ],
+    },
+    {
+      mock: MOCK.portrait, group: 2, short: '林博士を紹介する写真',
+      context: '科学雑誌の記事で、宇宙飛行士の林博士を紹介している写真です。',
+      point: '写真は「何であり、何をしているか」を簡潔に。文脈上その人が誰かが重要なら、<b>名前を書きます</b>。「写真」「イラスト」という言葉は不要です。',
+      options: [
+        { t:'alt="宇宙服を着た人物"',   ok:false, why:'誰なのかが分かりません。この記事では「林博士である」ことが重要な情報です。' },
+        { t:'alt="宇宙飛行士の林博士"', ok:true,  why:'正解。記事の文脈で必要な情報が、簡潔に伝わります。' },
+        { t:'alt=""',                 ok:false, why:'記事の主要な情報を伝えている写真なので、空にしてはいけません。' },
+        { t:'alt="林博士の写真"',       ok:false, why:'読み上げソフトは「画像」であることを自分で伝えるので、「写真」は重複します。' },
+      ],
+    },
+    {
+      mock: MOCK.banner, group: 2, short: 'サマーセールのバナー',
+      context: 'オンラインショップに掲載されている、セールの告知バナーです。',
+      point: '画像の中に文字が入っているときは、<b>その文字情報をすべて書き写す</b>のが基本です。目で読める情報と、耳で聞ける情報を同じにします。',
+      options: [
+        { t:'alt="サマーセール 50% OFF"', ok:true,  why:'正解。バナーに書かれた文字がそのまま伝わります。' },
+        { t:'alt="赤い背景のバナー"',     ok:false, why:'色やデザインより、画像に書かれている文字のほうがはるかに重要です。' },
+        { t:'alt="セールのお知らせ"',     ok:false, why:'「50% OFF」という肝心の情報が抜けています。' },
+        { t:'alt="クリックして詳細を見る"', ok:false, why:'リンクの画像ならこう書きますが、これは告知バナーなので、書かれている内容を伝えます。' },
+      ],
+    },
+    {
+      mock: MOCK.download, group: 1, short: 'ダウンロードのアイコン',
+      context: 'レポートの横にあるアイコンです。押すとPDFファイルのダウンロードが始まります。',
+      point: 'アイコンがボタンとして働くときも「機能的な画像」です。<b>押すと何が起きるか</b>を書きます。ファイルの種類やサイズを添えるとさらに親切です。',
+      options: [
+        { t:'alt="ダウンロードアイコン"',        ok:false, why:'見た目の名前を言われても、何がダウンロードされるのか分かりません。' },
+        { t:'alt="調査レポートをダウンロード（PDF）"', ok:true, why:'正解。何が手に入るのか、どんな形式なのかまで分かります。' },
+        { t:'alt="下向きの矢印"',                ok:false, why:'形の説明では、その機能が伝わりません。' },
+        { t:'alt=""',                          ok:false, why:'重要な機能を持つので、空にすると読み上げソフトの利用者はダウンロードできなくなります。' },
+      ],
+    },
+    {
+      mock: MOCK.check, group: 4, short: '送信完了のチェックアイコン',
+      context: '送信が成功したことを示すアイコンです。すぐ隣に「メッセージを送信しました」という文字が表示されています。',
+      point: '<b>隣に同じ意味のテキストがある</b>アイコンは、装飾と同じ扱いにします。altを空にすることで、同じ情報を二度読み上げるのを防げます。',
+      options: [
+        { t:'alt="成功"',           ok:false, why:'隣の文字と合わせて「成功、メッセージを送信しました」と重複して読まれてしまいます。' },
+        { t:'alt="緑のチェックマーク"', ok:false, why:'見た目の説明は不要で、しかも隣のテキストと情報が重なります。' },
+        { t:'alt=""',              ok:true,  why:'正解。隣に同じ内容のテキストがあるので、画像は装飾として扱い、読み飛ばしてもらいます。' },
+        { t:'alt="送信成功アイコン"',  ok:false, why:'これも重複します。「アイコン」という言葉も入れる必要はありません。' },
+      ],
+    },
+    {
+      mock: MOCK.dough, group: 2, short: 'パン生地をこねる手順写真',
+      context: 'パン作りのレシピで、「生地をこねる」という手順を説明している写真です。',
+      point: '手順を説明する場面では、写っている<b>「モノ」ではなく「動作」</b>を書きます。その手順で何をすればよいかが伝わります。',
+      options: [
+        { t:'alt="パン生地"',                   ok:false, why:'写っているモノだけでは、この手順で何をするのかが分かりません。' },
+        { t:'alt="ボウルの中で、両手でパン生地を力強くこねている様子"', ok:true, why:'正解。手順の内容そのものが伝わります。' },
+        { t:'alt="パン作りの工程"',              ok:false, why:'漠然としすぎていて、この手順で何をすべきか分かりません。' },
+        { t:'alt=""',                          ok:false, why:'手順を視覚的に補っている情報価値のある写真なので、空にしてはいけません。' },
+      ],
+    },
+  ];
+
+  const GROUP_NAME = { 1:'グループ1　機能的な画像', 2:'グループ2　説明的な画像', 3:'グループ3　複雑な画像', 4:'グループ4　装飾的な画像' };
+
+  /* =========================================================
+     状態
+     ========================================================= */
+  const $ = (id) => document.getElementById(id);
+  const live = $('live');
+  const say = (t) => { live.textContent = t; };
+
+  const shuffle = (arr) => {                     // Fisher–Yates
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  let order = [];        // 出題する問題（QUESTIONSの参照）
+  let idx = 0;
+  let score = 0;
+  let answered = false;
+  let results = [];      // { q, ok, picked }
+
+  /* =========================================================
+     進行
+     ========================================================= */
+  function start(list) {
+    order = shuffle(list || QUESTIONS);
+    idx = 0; score = 0; results = [];
+    $('total').textContent = String(order.length);
+    show('s-quiz');
+    render();
+  }
+
+  function show(id) {
+    ['s-quiz', 's-result'].forEach((s) => $(s).classList.toggle('is-active', s === id));
+    window.scrollTo(0, 0);
+  }
+
+  function render() {
+    answered = false;
+    const q = order[idx];
+
+    $('qno').textContent = `問題 ${idx + 1} / ${order.length}`;
+    $('bar').style.width = `${(idx / order.length) * 100}%`;
+    $('score').textContent = String(score);
+    $('context').textContent = q.context;
+    $('mock').innerHTML = q.mock();
+    $('feedback').hidden = true;
+
+    const box = $('options');
+    box.innerHTML = '';
+    shuffle(q.options).forEach((op) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'opt';
+      b.innerHTML =
+        `<span class="flag"></span><code></code><p class="why"></p>`;
+      b.querySelector('code').textContent = op.t;
+      b.querySelector('.why').textContent = op.why;
+      b.addEventListener('click', () => answer(b, op, q));
+      box.appendChild(b);
+    });
+  }
+
+  function answer(btn, op, q) {
+    if (answered) return;
+    answered = true;
+
+    if (op.ok) score++;
+    results.push({ q, ok: op.ok, picked: op.t });
+
+    [...$('options').children].forEach((b) => {
+      b.disabled = true;
+      const isCorrect = b.querySelector('code').textContent ===
+        q.options.find((o) => o.ok).t;
+      if (isCorrect) {
+        b.dataset.state = 'correct';
+        b.querySelector('.flag').textContent = '正解';
+      } else if (b === btn) {
+        b.dataset.state = 'wrong';
+        b.querySelector('.flag').textContent = 'あなたの答え';
+      } else {
+        b.dataset.state = 'other';
+      }
+    });
+
+    const v = $('verdict');
+    v.dataset.ok = String(op.ok);
+    v.innerHTML = (op.ok ? '正解！' : 'おしい！') +
+      ` <span class="gbadge" data-g="${q.group}">${GROUP_NAME[q.group]}</span>`;
+    $('point').innerHTML = q.point;
+    $('score').textContent = String(score);
+    $('feedback').hidden = false;
+    $('btn-next').textContent = idx + 1 < order.length ? '次の問題へ' : '結果を見る';
+    $('btn-next').focus({ preventScroll: true });
+    $('feedback').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    say(op.ok ? '正解です' : '不正解です。正しい答えを確認してください');
+  }
+
+  $('btn-next').addEventListener('click', () => {
+    idx++;
+    if (idx < order.length) { render(); window.scrollTo(0, 0); }
+    else finish();
+  });
+
+  function finish() {
+    $('bar').style.width = '100%';
+    $('final').textContent = String(score);
+    $('total').textContent = String(order.length);
+
+    const rate = score / order.length;
+    $('result-msg').textContent =
+      rate === 1 ? 'ぜんぶ正解！　画像の目的を見きわめる力がついています。'
+      : rate >= 0.75 ? 'よくできました。あと少しで完璧です。まちがえた問題を見返してみましょう。'
+      : rate >= 0.5 ? '半分以上できました。「その画像は何のためにそこにあるのか」を意識すると、もっと分かるようになります。'
+      : 'まずは下の4つのグループを読んでから、もう一度挑戦してみましょう。';
+
+    const ol = $('review-list');
+    ol.innerHTML = '';
+    results.forEach((r, i) => {
+      const li = document.createElement('li');
+      li.dataset.ok = String(r.ok);
+      const correct = r.q.options.find((o) => o.ok).t;
+      li.innerHTML =
+        `<span class="mk">${r.ok ? '○' : '×'}</span>` +
+        `<span class="txt"><b>${i + 1}. ${escapeHtml(r.q.short)}</b>` +
+        `<em>正解：<code>${escapeHtml(correct)}</code></em>` +
+        (r.ok ? '' : `<em>あなたの答え：<code style="color:#7f1d1d">${escapeHtml(r.picked)}</code></em>`) +
+        `</span>`;
+      ol.appendChild(li);
+    });
+    if (results.some((r) => !r.ok)) $('review').open = true;
+
+    const wrong = results.filter((r) => !r.ok).map((r) => r.q);
+    const wb = $('btn-wrong');
+    wb.hidden = wrong.length === 0;
+    wb.onclick = () => start(wrong);
+
+    show('s-result');
+    say(`${order.length}問中${score}問正解でした`);
+  }
+
+  const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+  $('btn-again').addEventListener('click', () => start());
+
+  /* =========================================================
+     起動
+     ========================================================= */
+  start();
+})();
+</script>
+
 </body>
 </html>
