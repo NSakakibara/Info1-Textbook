@@ -1,342 +1,837 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>目の見え方シミュレーター</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', 'Noto Sans JP', sans-serif;
-        }
-        /* Hide range input track in Firefox */
-        input[type=range] {
-            -moz-appearance: none;
-            background: transparent;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>見え方シミュレーター ｜ 「見えにくい」を体験してみる</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   見え方シミュレーター
+   高等学校 情報Ⅰ 補助教材「情報アクセシビリティをはじめよう」
+   - 外部フレームワーク・外部画像に依存しない（フォント以外はオフラインで動作）
+   - 場面はCanvasに直接描画するので、読み込み失敗もCORS汚染も起きない
+   ========================================================= */
+
+:root{
+  --ink:#1e293b; --ink-soft:#475569; --ink-mute:#64748b;
+  --line:#cbd5e1; --line-soft:#e2e8f0;
+  --bg:#f1f5f9; --surface:#fff; --surface-2:#f8fafc;
+
+  --brand:#0369a1; --brand-dark:#075985; --brand-tint:#f0f9ff; --brand-line:#7dd3fc;
+  --ok:#15803d; --ok-tint:#f0fdf4; --ok-line:#86efac;
+  --gold:#78350f; --gold-tint:#fffbeb; --gold-line:#fcd34d;
+
+  --r-sm:8px; --r-md:12px; --r-lg:18px; --r-xl:24px;
+  --shadow-1:0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.08);
+  --shadow-2:0 6px 18px rgba(15,23,42,.10);
+  --tap:44px;
+
+  --font:'M PLUS Rounded 1c','Hiragino Maru Gothic ProN','BIZ UDPGothic',
+         'Yu Gothic UI','Hiragino Sans','Noto Sans JP',system-ui,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0; font-family:var(--font); color:var(--ink); background:var(--bg);
+  line-height:1.75; -webkit-tap-highlight-color:transparent;
+}
+button,input{ font:inherit; color:inherit; }
+:focus-visible{ outline:3px solid var(--brand); outline-offset:2px; border-radius:6px; }
+@media (prefers-reduced-motion:reduce){ *{ transition-duration:.01ms!important; } }
+
+/* ---------- 骨格 ---------- */
+.wrap{
+  max-width:1180px; margin-inline:auto;
+  padding:clamp(12px,2.5vw,26px) clamp(12px,2.5vw,20px) calc(28px + env(safe-area-inset-bottom));
+}
+.pagehead{ text-align:center; margin-bottom:clamp(12px,2vw,18px); }
+.pagehead h1{ margin:0; font-size:clamp(1.4rem,1.1rem+1.4vw,2rem); font-weight:800; color:#334155; }
+.pagehead p{ margin:.4em auto 0; max-width:58ch; color:var(--ink-mute); font-size:clamp(.85rem,.8rem+.2vw,.98rem); }
+
+.caveat{
+  display:flex; gap:12px; align-items:flex-start;
+  padding:12px 16px; margin-bottom:clamp(12px,2vw,18px);
+  background:var(--gold-tint); border:1px solid var(--gold-line);
+  border-radius:var(--r-md); color:var(--gold); font-size:.85rem;
+}
+.caveat .ic{ flex:none; font-size:1.1rem; line-height:1.5; }
+.caveat b{ font-weight:800; }
+
+.grid{ display:grid; grid-template-columns:minmax(0,1fr); gap:clamp(12px,1.6vw,18px); align-items:start; }
+@media (min-width:960px){ .grid{ grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); } }
+
+.card{
+  background:var(--surface); border:1px solid var(--line-soft);
+  border-radius:var(--r-lg); box-shadow:var(--shadow-1);
+  padding:clamp(14px,2vw,20px);
+}
+.card > h2{
+  margin:0 0 4px; font-size:1rem; font-weight:800; color:#334155;
+  display:flex; align-items:center; gap:8px;
+}
+.card > p.lead{ margin:0 0 12px; font-size:.84rem; color:var(--ink-mute); }
+.num{
+  flex:none; display:grid; place-items:center; width:26px; height:26px;
+  border-radius:50%; background:var(--brand); color:#fff; font-size:.82rem; font-weight:800;
+}
+
+/* ---------- 場面の切り替え ---------- */
+.chips{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.chip{
+  -webkit-appearance:none; appearance:none;
+  min-height:38px; padding:0 14px; border-radius:999px;
+  border:2px solid var(--line); background:#fff; color:var(--ink-soft);
+  font-size:.82rem; font-weight:800; cursor:pointer; touch-action:manipulation;
+}
+.chip:hover{ border-color:var(--brand-line); }
+.chip[aria-pressed="true"]{ background:var(--brand); border-color:var(--brand); color:#fff; }
+.upload{ position:relative; overflow:hidden; }
+.upload input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+
+/* ---------- 表示 ---------- */
+.stage{
+  position:relative; border-radius:var(--r-md); overflow:hidden;
+  border:1px solid var(--line-soft); background:#000;
+}
+.stage canvas{ display:block; width:100%; height:auto; }
+.stage .tag{
+  position:absolute; bottom:10px; right:10px; z-index:2;
+  font-size:.72rem; font-weight:800; color:#fff;
+  background:rgba(15,23,42,.72); border-radius:999px; padding:3px 12px;
+  pointer-events:none;
+}
+.stage[data-raw="true"] .tag{ background:var(--ok); }
+
+.stagebar{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; }
+.btn{
+  -webkit-appearance:none; appearance:none;
+  min-height:var(--tap); padding:10px 18px; border-radius:999px;
+  border:2px solid transparent; font-weight:800; font-size:.88rem; cursor:pointer;
+  box-shadow:var(--shadow-1); touch-action:manipulation;
+}
+.btn-primary{ background:var(--brand); color:#fff; }
+.btn-primary:hover{ background:var(--brand-dark); }
+.btn-ghost{ background:#fff; color:var(--ink-soft); border-color:var(--line); }
+.btn-ghost:hover{ background:#f1f5f9; }
+.btn-compare[aria-pressed="true"]{ background:var(--ok); color:#fff; border-color:var(--ok); }
+.hint{ margin:8px 0 0; font-size:.78rem; color:var(--ink-mute); }
+
+/* ---------- スライダー ---------- */
+.ctrl + .ctrl{ margin-top:16px; }
+.ctrl-head{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+.ctrl-head label{ font-size:.9rem; font-weight:800; color:#334155; }
+.ctrl-head .sub{ display:block; font-size:.74rem; font-weight:400; color:var(--ink-mute); }
+.ctrl-head output{
+  flex:none; font-family:var(--mono); font-size:.86rem; font-weight:700;
+  color:var(--brand-dark); font-variant-numeric:tabular-nums;
+}
+.ctrl-row{ display:flex; align-items:center; gap:10px; margin-top:6px; }
+.ctrl-row .end{ flex:none; font-size:.72rem; color:var(--ink-mute); white-space:nowrap; }
+
+input[type="range"]{
+  -webkit-appearance:none; appearance:none;
+  flex:1; min-width:0; height:32px; margin:0; background:transparent; cursor:pointer;
+  touch-action:pan-y;
+}
+input[type="range"]::-webkit-slider-runnable-track{
+  height:8px; border-radius:999px; background:var(--line-soft);
+}
+input[type="range"]::-moz-range-track{ height:8px; border-radius:999px; background:var(--line-soft); }
+input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none;
+  width:26px; height:26px; margin-top:-9px; border-radius:50%;
+  background:var(--brand); border:3px solid #fff; box-shadow:var(--shadow-1);
+}
+input[type="range"]::-moz-range-thumb{
+  width:22px; height:22px; border-radius:50%;
+  background:var(--brand); border:3px solid #fff; box-shadow:var(--shadow-1);
+}
+
+/* ---------- プリセット ---------- */
+.presets{ display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+.preset{
+  -webkit-appearance:none; appearance:none;
+  min-height:38px; padding:0 13px; border-radius:999px;
+  border:2px solid var(--brand-line); background:var(--brand-tint); color:var(--brand-dark);
+  font-size:.8rem; font-weight:800; cursor:pointer; touch-action:manipulation;
+}
+.preset:hover{ background:#e0f2fe; }
+.preset.reset{ border-color:var(--line); background:#fff; color:var(--ink-soft); }
+.preset.reset:hover{ background:#f1f5f9; }
+
+/* ---------- 眼球図 ---------- */
+.eye{ margin-top:6px; background:var(--surface-2); border:1px solid var(--line-soft); border-radius:var(--r-md); padding:10px; }
+.eye svg{ display:block; width:100%; height:auto; }
+
+/* ---------- 解説 ---------- */
+.explain{ margin-top:clamp(12px,1.6vw,18px); }
+.explain h2{ margin:0 0 10px; font-size:1rem; font-weight:800; color:#334155; }
+.explain dl{ margin:0; display:grid; grid-template-columns:minmax(0,1fr); gap:10px; }
+@media (min-width:700px){ .explain dl{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.explain .item{
+  padding:12px 14px; border-radius:var(--r-md);
+  background:var(--surface-2); border:1px solid var(--line-soft);
+}
+.explain dt{ font-size:.9rem; font-weight:800; color:var(--brand-dark); }
+.explain dd{ margin:.2em 0 0; font-size:.84rem; color:var(--ink-soft); }
+
+.visually-hidden{
+  position:absolute!important; width:1px; height:1px; margin:-1px; padding:0;
+  overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0;
+}
+.credit{ text-align:center; margin:18px 0 0; font-size:.75rem; color:var(--ink-mute); }
+</style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+<body>
 
-    <div class="bg-white rounded-2xl shadow-lg p-6 md-p-8 w-full max-w-3xl mx-auto">
-        
-        <header class="text-center mb-6">
-            <h1 class="text-2xl md:text-3xl font-bold text-gray-800">目の見え方シミュレーター</h1>
-            <p class="text-gray-600 mt-2">スライダーを動かして、視覚と眼球内部の変化を体験してみましょう。</p>
-        </header>
+<div class="wrap">
+  <header class="pagehead">
+    <h1>見え方シミュレーター</h1>
+    <p>スライダーを動かすと、画面の見え方と眼球の中の様子が同時に変わります。情報が「届かなくなる」瞬間を体験してみましょう。</p>
+  </header>
 
-        <!-- Eye Diagram SVG (Side View, Flipped) -->
-        <div class="mb-8 bg-gray-50 rounded-lg p-4 flex justify-center items-center">
-            <svg viewBox="0 0 200 100" class="w-full max-w-sm" aria-labelledby="eye-title" role="img">
-                <title id="eye-title">眼球の断面図（側面）</title>
-                
-                <!-- Sclera (White part of the eye) -->
-                <path d="M 55,95 A 45,45 0 1 0 55,5" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1"/>
-                
-                <!-- Vitreous Humor (Inside the eye) - Floaters will be here -->
-                <g id="svg-floaters-group"></g>
+  <p class="caveat">
+    <span class="ic" aria-hidden="true">⚠</span>
+    <span>
+      <b>このシミュレーターは、見えにくさの一例を擬似的に示すものです。</b>
+      実際の見え方や生活上の経験には大きな個人差があり、障害のある人の体験全体を再現するものではありません。
+      「こういう見えにくさがあるのか」と気づくためのきっかけとして使ってください。
+    </span>
+  </p>
 
-                <!-- Retina and Choroid Layer -->
-                <path d="M 58,92 A 42,42 0 1 0 58,8" fill="none" stroke="#FCA5A5" stroke-width="3"/>
-                 <!-- Macula Spot for Central Scotoma -->
-                <circle id="macula-spot" cx="100" cy="50" r="3" fill="#6b21a8" opacity="0"/>
+  <div class="grid">
 
-                <!-- Cornea -->
-                <path id="cornea-path" d="M 55,5 C 30,25 30,75 55,95" fill="#E0F2FE" opacity="0.7" stroke="#A5D8FF" stroke-width="1"/>
+    <!-- ============ 左：見え方 ============ -->
+    <section class="card" aria-labelledby="h-view">
+      <h2 id="h-view"><span class="num" aria-hidden="true">1</span>見え方</h2>
+      <p class="lead">場面を切り替えて、文字・ボタン・色がどう変わるか確かめましょう。</p>
 
-                <!-- Iris -->
-                <path d="M 68, 35 C 62, 40 62, 60 68, 65 L 72,65 C 68, 60 68, 40 72, 35 Z" fill="#60A5FA"/>
-                
-                <!-- Lens -->
-                <ellipse id="lens" cx="75" cy="50" rx="6" ry="14" fill="#BFDBFE" stroke="#A5D8FF" stroke-width="0.5"/>
-                
-                <!-- Optic Nerve -->
-                <path id="optic-nerve" d="M 145, 42 C 160, 38 170, 35 180, 35 L 180, 65 C 170,65 160,62 145,58 Z" fill="#FBBF24"/>
-                
-                <!-- Labels -->
-                <text x="25" y="15" font-size="8" fill="#6B7280">角膜</text>
-                <line x1="40" y1="20" x2="45" y2="30" stroke="#6B7280" stroke-width="0.5"/>
-                <text x="80" y="15" font-size="8" fill="#6B7280">水晶体</text>
-                <line x1="78" y1="20" x2="78" y2="35" stroke="#6B7280" stroke-width="0.5"/>
-                <text x="150" y="25" font-size="8" fill="#6B7280">視神経</text>
-                <line x1="160" y1="30" x2="150" y2="38" stroke="#6B7280" stroke-width="0.5"/>
-                <text x="110" y="85" font-size="8" fill="#6B7280">網膜(黄斑部)</text>
-                <line x1="110" y1="80" x2="100" y2="55" stroke="#6B7280" stroke-width="0.5"/>
+      <div class="chips" role="group" aria-label="場面の切り替え">
+        <button type="button" class="chip" data-scene="0" aria-pressed="true">学校のお知らせ</button>
+        <button type="button" class="chip" data-scene="1" aria-pressed="false">駅の案内表示</button>
+        <button type="button" class="chip" data-scene="2" aria-pressed="false">公園の風景</button>
+        <span class="chip upload">
+          自分の画像を使う
+          <input type="file" id="file" accept="image/*" aria-label="画像ファイルを選ぶ">
+        </span>
+      </div>
 
-            </svg>
+      <div class="stage" id="stage" data-raw="false">
+        <span class="tag" id="tag">シミュレーション中</span>
+        <canvas id="cv" width="960" height="540"
+                role="img" aria-label="見え方のシミュレーション画面"></canvas>
+      </div>
+
+      <div class="stagebar">
+        <button type="button" class="btn btn-ghost btn-compare" id="compare" aria-pressed="false">
+          押している間だけ、元の見え方
+        </button>
+        <button type="button" class="btn btn-ghost" id="reset-all">すべてリセット</button>
+      </div>
+      <p class="hint">「元の見え方」はボタンを押している間だけ表示されます（キーボードでは <kbd>Space</kbd> を押し続けます）。</p>
+    </section>
+
+    <!-- ============ 右：コントロール ============ -->
+    <section class="card" aria-labelledby="h-ctrl">
+      <h2 id="h-ctrl"><span class="num" aria-hidden="true">2</span>見えにくさを足す</h2>
+      <p class="lead">よくある状態をワンタッチで試せます。組み合わせることもできます。</p>
+
+      <div class="presets" role="group" aria-label="プリセット">
+        <button type="button" class="preset" data-preset="cataract">白内障</button>
+        <button type="button" class="preset" data-preset="tunnel">緑内障</button>
+        <button type="button" class="preset" data-preset="scotoma">加齢黄斑変性</button>
+        <button type="button" class="preset" data-preset="astig">乱視</button>
+        <button type="button" class="preset" data-preset="floaters">飛蚊症</button>
+        <button type="button" class="preset reset" data-preset="none">リセット</button>
+      </div>
+
+      <div style="margin-top:16px">
+        <div class="ctrl">
+          <div class="ctrl-head">
+            <label for="s-cataract">水晶体の濁り<span class="sub">白内障・まぶしさ</span></label>
+            <output id="o-cataract" for="s-cataract">0%</output>
+          </div>
+          <div class="ctrl-row">
+            <span class="end">クリア</span>
+            <input type="range" id="s-cataract" min="0" max="100" step="1" value="0">
+            <span class="end">強い濁り</span>
+          </div>
         </div>
 
-        <!-- Controls -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 mb-8">
-            <!-- 水晶体の濁り -->
-            <div>
-                <label for="cataract-slider" class="block text-md font-medium text-gray-700 mb-2">水晶体の濁り (白内障・まぶしさ)</label>
-                <div class="flex items-center space-x-4">
-                    <span class="text-sm text-gray-500">クリア</span>
-                    <input id="cataract-slider" type="range" min="0" max="0.8" value="0" step="0.01" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                    <span class="text-sm text-gray-500">強い濁り</span>
-                </div>
-            </div>
-            <!-- 視野狭窄 -->
-            <div>
-                <label for="tunnel-vision-slider" class="block text-md font-medium text-gray-700 mb-2">視野狭窄 (緑内障など)</label>
-                <div class="flex items-center space-x-4">
-                    <span class="text-sm text-gray-500">正常</span>
-                    <input id="tunnel-vision-slider" type="range" min="0" max="1" value="0" step="0.01" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                    <span class="text-sm text-gray-500">重度</span>
-                </div>
-            </div>
-            <!-- 中心暗点 -->
-            <div>
-                <label for="central-scotoma-slider" class="block text-md font-medium text-gray-700 mb-2">中心暗点 (加齢黄斑変性など)</label>
-                <div class="flex items-center space-x-4">
-                    <span class="text-sm text-gray-500">なし</span>
-                    <input id="central-scotoma-slider" type="range" min="0" max="1" value="0" step="0.01" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                    <span class="text-sm text-gray-500">重度</span>
-                </div>
-            </div>
-            <!-- 乱視 -->
-            <div>
-                <label for="astigmatism-slider" class="block text-md font-medium text-gray-700 mb-2">乱視</label>
-                <div class="flex items-center space-x-4">
-                    <span class="text-sm text-gray-500">なし</span>
-                    <input id="astigmatism-slider" type="range" min="0" max="10" value="0" step="0.1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                    <span class="text-sm text-gray-500">強い</span>
-                </div>
-            </div>
-             <!-- 飛蚊症 -->
-            <div class="md:col-span-2">
-                <label for="floaters-slider" class="block text-md font-medium text-gray-700 mb-2">飛蚊症</label>
-                <div class="flex items-center space-x-4">
-                    <span class="text-sm text-gray-500">なし</span>
-                    <input id="floaters-slider" type="range" min="0" max="50" value="0" step="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                    <span class="text-sm text-gray-500">多い</span>
-                </div>
-            </div>
+        <div class="ctrl">
+          <div class="ctrl-head">
+            <label for="s-tunnel">視野狭窄<span class="sub">緑内障など</span></label>
+            <output id="o-tunnel" for="s-tunnel">0%</output>
+          </div>
+          <div class="ctrl-row">
+            <span class="end">正常</span>
+            <input type="range" id="s-tunnel" min="0" max="100" step="1" value="0">
+            <span class="end">重度</span>
+          </div>
         </div>
 
-        <!-- Image Display -->
-        <div class="relative w-full aspect-video border-2 border-gray-200 rounded-lg overflow-hidden">
-            <img id="source-image" src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1080&q=80" class="hidden" alt="ヨーロッパの街並み" crossorigin="anonymous">
-            <canvas id="display-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
-            <div id="loader" class="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center">
-                <p class="text-gray-600">画像を読み込んでいます...</p>
-            </div>
+        <div class="ctrl">
+          <div class="ctrl-head">
+            <label for="s-scotoma">中心暗点<span class="sub">加齢黄斑変性など</span></label>
+            <output id="o-scotoma" for="s-scotoma">0%</output>
+          </div>
+          <div class="ctrl-row">
+            <span class="end">なし</span>
+            <input type="range" id="s-scotoma" min="0" max="100" step="1" value="0">
+            <span class="end">重度</span>
+          </div>
         </div>
 
-    </div>
+        <div class="ctrl">
+          <div class="ctrl-head">
+            <label for="s-astig">乱視<span class="sub">輪郭のにじみ</span></label>
+            <output id="o-astig" for="s-astig">0%</output>
+          </div>
+          <div class="ctrl-row">
+            <span class="end">なし</span>
+            <input type="range" id="s-astig" min="0" max="100" step="1" value="0">
+            <span class="end">強い</span>
+          </div>
+        </div>
 
-    <script>
-        // DOM要素の取得 (スライダー)
-        const cataractSlider = document.getElementById('cataract-slider');
-        const tunnelVisionSlider = document.getElementById('tunnel-vision-slider');
-        const centralScotomaSlider = document.getElementById('central-scotoma-slider');
-        const astigmatismSlider = document.getElementById('astigmatism-slider');
-        const floatersSlider = document.getElementById('floaters-slider');
-        
-        // DOM要素の取得 (描画関連)
-        const canvas = document.getElementById('display-canvas');
-        const ctx = canvas.getContext('2d');
-        const sourceImage = document.getElementById('source-image');
-        const loader = document.getElementById('loader');
+        <div class="ctrl">
+          <div class="ctrl-head">
+            <label for="s-floaters">飛蚊症<span class="sub">浮遊物</span></label>
+            <output id="o-floaters" for="s-floaters">0%</output>
+          </div>
+          <div class="ctrl-row">
+            <span class="end">なし</span>
+            <input type="range" id="s-floaters" min="0" max="100" step="1" value="0">
+            <span class="end">多い</span>
+          </div>
+        </div>
+      </div>
 
-        // DOM要素の取得 (SVG)
-        const lensElement = document.getElementById('lens');
-        const corneaPath = document.getElementById('cornea-path');
-        const maculaSpot = document.getElementById('macula-spot');
-        const opticNerve = document.getElementById('optic-nerve');
-        const svgFloatersGroup = document.getElementById('svg-floaters-group');
+      <div class="eye">
+        <svg viewBox="0 0 300 150" role="img" aria-labelledby="eye-t eye-d">
+          <title id="eye-t">眼球の断面図</title>
+          <desc id="eye-d">スライダーの値に合わせて、水晶体の濁り・角膜のゆがみ・黄斑部の暗点・硝子体の浮遊物が変化します。</desc>
 
-        const image = new Image();
-        image.crossOrigin = "Anonymous";
+          <!-- 強膜 -->
+          <path d="M78 142 A 68 68 0 1 0 78 8" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+          <!-- 硝子体 -->
+          <path d="M82 138 A 64 64 0 1 0 82 12" fill="#f0f9ff"/>
+          <!-- 浮遊物 -->
+          <g id="eye-floaters"></g>
+          <!-- 網膜 -->
+          <path d="M84 136 A 62 62 0 1 0 84 14" fill="none" stroke="#fca5a5" stroke-width="4"/>
+          <!-- 黄斑部（中心暗点） -->
+          <circle id="eye-macula" cx="150" cy="75" r="0" fill="#4c1d95" opacity="0"/>
+          <circle cx="150" cy="75" r="4" fill="none" stroke="#f87171" stroke-width="2"/>
+          <!-- 角膜 -->
+          <path id="eye-cornea" d="M78 8 C 46 34 46 116 78 142" fill="#e0f2fe" opacity=".75" stroke="#7dd3fc" stroke-width="2"/>
+          <!-- 虹彩 -->
+          <path d="M96 46 C 88 55 88 95 96 104 L102 104 C 95 95 95 55 102 46 Z" fill="#0369a1"/>
+          <!-- 水晶体 -->
+          <ellipse id="eye-lens" cx="106" cy="75" rx="9" ry="21" fill="#bfdbfe" stroke="#7dd3fc" stroke-width="1.5"/>
+          <!-- 視神経 -->
+          <path d="M214 63 C 236 58 254 55 272 55 L272 95 C 254 95 236 92 214 87 Z" fill="#fbbf24"/>
 
-        let canvasFloaters = [];
-        const MAX_FLOATERS = 50;
+          <text x="34" y="24" font-size="11" fill="#475569" font-weight="700">角膜</text>
+          <line x1="52" y1="28" x2="60" y2="40" stroke="#94a3b8" stroke-width="1.5"/>
+          <text x="112" y="22" font-size="11" fill="#475569" font-weight="700">水晶体</text>
+          <line x1="112" y1="26" x2="107" y2="52" stroke="#94a3b8" stroke-width="1.5"/>
+          <text x="236" y="34" font-size="11" fill="#475569" font-weight="700">視神経</text>
+          <line x1="248" y1="38" x2="238" y2="58" stroke="#94a3b8" stroke-width="1.5"/>
+          <text x="150" y="140" font-size="11" fill="#475569" font-weight="700">網膜（黄斑部）</text>
+          <line x1="168" y1="132" x2="153" y2="82" stroke="#94a3b8" stroke-width="1.5"/>
+        </svg>
+      </div>
+    </section>
+  </div>
 
-        // 飛蚊症のオブジェクトを生成 (Canvas用とSVG用)
-        function createFloaters(canvasWidth, canvasHeight) {
-            canvasFloaters = [];
-            svgFloatersGroup.innerHTML = ''; // SVG内をクリア
-            for (let i = 0; i < MAX_FLOATERS; i++) {
-                // Canvas用
-                canvasFloaters.push({
-                    x: Math.random() * canvasWidth,
-                    y: Math.random() * canvasHeight,
-                    radius: Math.random() * 2 + 1,
-                    opacity: Math.random() * 0.4 + 0.1,
-                    vx: (Math.random() - 0.5) * 0.2, 
-                    vy: (Math.random() - 0.5) * 0.2
-                });
-                // SVG用 (硝子体内にランダム配置)
-                const angle = Math.random() * Math.PI * 2;
-                const radius = Math.random() * 40; // 眼球の中心からの距離
-                const cx = 100 + radius * Math.cos(angle);
-                const cy = 50 + radius * Math.sin(angle);
+  <!-- ============ 解説 ============ -->
+  <section class="card explain" aria-labelledby="h-exp">
+    <h2 id="h-exp">それぞれ、どんな状態？</h2>
+    <dl>
+      <div class="item"><dt>水晶体の濁り（白内障）</dt>
+        <dd>レンズの役割をする水晶体が白く濁り、画面がかすんだり、光がにじんでまぶしく感じたりします。全体に黄色みがかって見えることもあります。</dd></div>
+      <div class="item"><dt>視野狭窄（緑内障など）</dt>
+        <dd>見える範囲が外側から少しずつ狭くなり、トンネルの中から覗いているような見え方になります。<b>必要な情報が視野の外にあると、存在にすら気づけません。</b></dd></div>
+      <div class="item"><dt>中心暗点（加齢黄斑変性など）</dt>
+        <dd>視野の中心が暗く抜けたり歪んだりします。周りは見えているのに、いま読もうとしている文字や人の顔だけが見えない、という状態です。</dd></div>
+      <div class="item"><dt>乱視</dt>
+        <dd>角膜や水晶体の形のゆがみで輪郭がぼやけ、文字の形がはっきり分からなくなります。細い書体や小さい文字ほど読みにくくなります。</dd></div>
+      <div class="item"><dt>飛蚊症</dt>
+        <dd>目の中の濁りが網膜に映り、半透明の影がふわふわ動いて見えます。文字を読んでいるときに、これが邪魔になることがあります。</dd></div>
+      <div class="item"><dt>だから、どうする？</dt>
+        <dd>大きめの文字、十分なコントラスト、押しやすいボタン、色だけに頼らない伝え方。<b>作る側のちょっとした工夫で、届く情報がずいぶん変わります。</b></dd></div>
+    </dl>
+  </section>
 
-                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                circle.setAttribute('cx', cx);
-                circle.setAttribute('cy', cy);
-                circle.setAttribute('r', Math.random() * 1.5 + 0.5);
-                circle.setAttribute('fill', `rgba(0,0,0,${Math.random() * 0.3 + 0.1})`);
-                circle.style.display = 'none'; // 初期状態は非表示
-                svgFloatersGroup.appendChild(circle);
-            }
-        }
+  <p class="credit">高等学校 情報Ⅰ 補助教材「つくって、つたえる、みんなのために」</p>
+</div>
 
-        image.onload = () => {
-            loader.style.display = 'none';
-            canvas.width = image.naturalWidth;
-            canvas.height = image.naturalHeight;
-            createFloaters(canvas.width, canvas.height);
-            applyFilters();
-        };
-        
-        image.onerror = () => {
-            loader.innerHTML = '<p class="text-red-500">画像の読み込みに失敗しました。</p>';
-        }
+<p class="visually-hidden" id="live" role="status" aria-live="polite"></p>
 
-        if (sourceImage.complete && sourceImage.naturalHeight !== 0) {
-            image.src = sourceImage.src;
-        } else {
-            sourceImage.onload = () => {
-                image.src = sourceImage.src;
-            };
-        }
-        
-        /**
-         * すべてのフィルターとSVGの更新を適用するメイン関数
-         */
-        function applyFilters() {
-            if (!image.src || !image.complete) return;
+<script>
+(() => {
+  'use strict';
 
-            // スライダーの値を取得
-            const cataractValue = parseFloat(cataractSlider.value);
-            const tunnelValue = parseFloat(tunnelVisionSlider.value);
-            const scotomaValue = parseFloat(centralScotomaSlider.value);
-            const astigmatismValue = parseFloat(astigmatismSlider.value);
-            const floaterCount = parseInt(floatersSlider.value);
+  const $ = (id) => document.getElementById(id);
+  const live = $('live');
+  const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-            // --- Canvasへの描画処理 ---
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.globalAlpha = 1.0;
+  const W = 960, H = 540;
 
-            // 乱視
-            if (astigmatismValue > 0) {
-                ctx.globalAlpha = 0.6;
-                // 縦方向にずらして描画
-                ctx.drawImage(image, 0, astigmatismValue, canvas.width, canvas.height);
-                ctx.drawImage(image, 0, -astigmatismValue, canvas.width, canvas.height);
-                ctx.globalAlpha = 1.0;
-            } else {
-                 ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-            }
+  /* Canvas のフィルタが使えるか調べる（古いSafari対策） */
+  const FILTER_OK = (() => {
+    const t = document.createElement('canvas').getContext('2d');
+    try { t.filter = 'blur(2px)'; return t.filter === 'blur(2px)'; } catch (_) { return false; }
+  })();
 
-            // 白内障 (ぼかし、まぶしさ、黄変)
-            const blurAmount = cataractValue * 10;
-            const brightness = 1 + cataractValue * 0.6; // まぶしさ（グレア）を表現
-            ctx.filter = `blur(${blurAmount}px) brightness(${brightness})`;
-            // フィルターを適用するために一度描画
-            ctx.drawImage(canvas, 0, 0); 
-            ctx.filter = 'none';
-            
-            // 黄変のオーバーレイ
-            if (cataractValue > 0) {
-                ctx.fillStyle = `rgba(255, 245, 200, ${cataractValue})`;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
-            
-            // 中心暗点
-            if (scotomaValue > 0) {
-                const centerX = canvas.width / 2;
-                const centerY = canvas.height / 2;
-                const radius = scotomaValue * (Math.min(canvas.width, canvas.height) / 3);
-                const gradient = ctx.createRadialGradient(centerX, centerY, radius * 0.5, centerX, centerY, radius);
-                gradient.addColorStop(0, `rgba(50, 50, 50, ${scotomaValue * 0.95})`);
-                gradient.addColorStop(0.8, `rgba(50, 50, 50, ${scotomaValue * 0.5})`);
-                gradient.addColorStop(1, 'rgba(50, 50, 50, 0)');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
+  const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
+  const src = mk();       // 元の場面
+  const stage = mk();     // 光学処理（乱視・白内障）を適用したもの
+  const bufA = mk();      // 乱視の結果
+  const bufB = mk();      // グレア用
+  const scratch = mk();   // ぼかしの作業用
+  const sctx = src.getContext('2d');
+  const gctx = stage.getContext('2d');
+  const actx = bufA.getContext('2d');
+  const kctx = scratch.getContext('2d');
+  const cv = $('cv'), ctx = cv.getContext('2d');
 
-            // 視野狭窄
-            if (tunnelValue > 0) {
-                const centerX = canvas.width / 2;
-                const centerY = canvas.height / 2;
-                const outerRadius = Math.sqrt(centerX*centerX + centerY*centerY);
-                const innerRadius = outerRadius * (1 - tunnelValue);
-                const gradient = ctx.createRadialGradient(centerX, centerY, innerRadius, centerX, centerY, outerRadius);
-                gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-                gradient.addColorStop(0.9, 'rgba(0, 0, 0, 0.9)');
-                gradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
+  const F = getComputedStyle(document.body).fontFamily;
+  const txt = (c, size, weight, s, x, y, align) => {
+    sctx.fillStyle = c; sctx.font = `${weight} ${size}px ${F}`;
+    sctx.textAlign = align || 'left'; sctx.textBaseline = 'alphabetic';
+    sctx.fillText(s, x, y);
+  };
+  const rect = (c, x, y, w, h, r) => {
+    sctx.fillStyle = c; sctx.beginPath();
+    if (r && sctx.roundRect) sctx.roundRect(x, y, w, h, r); else sctx.rect(x, y, w, h);
+    sctx.fill();
+  };
 
-            // 飛蚊症
-            if (floaterCount > 0) {
-                drawCanvasFloaters(floaterCount);
-            }
+  /* =========================================================
+     場面（Canvasに直接描画。外部ファイル不要）
+     ========================================================= */
+  const SCENES = [
+    // ---------- 0. 学校のお知らせ ----------
+    () => {
+      rect('#ffffff', 0, 0, W, H);
+      rect('#0369a1', 0, 0, W, 82);
+      txt('#ffffff', 30, 800, '清泉高等学校', 36, 52);
+      txt('#bae6fd', 20, 700, '学校紹介', 470, 52);
+      txt('#bae6fd', 20, 700, '入学案内', 610, 52);
+      txt('#bae6fd', 20, 700, 'アクセス', 750, 52);
 
-            // --- SVGの更新処理 ---
-            updateSvgDiagram(cataractValue, tunnelValue, scotomaValue, astigmatismValue, floaterCount);
-        }
-        
-        /**
-         * SVGの各パーツを更新する関数
-         */
-        function updateSvgDiagram(cataract, tunnel, scotoma, astigmatism, floaters) {
-            // 水晶体 (白内障)
-            const lensR = 191 + (cataract * 40);
-            const lensG = 219 - (cataract * 100);
-            const lensB = 254 - (cataract * 200);
-            lensElement.setAttribute('fill', `rgb(${lensR}, ${lensG}, ${lensB})`);
+      txt('#1e293b', 38, 800, '二学期 始業式のお知らせ', 36, 150);
+      rect('#e2e8f0', 36, 168, W - 72, 2);
+      txt('#334155', 22, 400, '9月1日（月）は始業式です。8時30分までに各教室へ登校してください。', 36, 214);
+      txt('#334155', 22, 400, '持ち物：夏休みの課題、上履き、体育館シューズ', 36, 250);
+      txt('#94a3b8', 16, 400, '※ 天候により時程を変更する場合があります。当日の朝、このページを確認してください。', 36, 288);
 
-            // 角膜 (乱視)
-            const controlY1 = 25 - astigmatism * 1.5; // 乱視の値に応じてカーブを歪ませる
-            const controlY2 = 75 + astigmatism * 1.5;
-            const newCorneaPath = `M 55,5 C 30,${controlY1} 30,${controlY2} 55,95`;
-            corneaPath.setAttribute('d', newCorneaPath);
+      rect('#0369a1', 36, 322, 300, 68, 12);
+      txt('#ffffff', 22, 800, '時程表をダウンロード', 186, 364, 'center');
+      rect('#ffffff', 360, 322, 300, 68, 12);
+      sctx.strokeStyle = '#0369a1'; sctx.lineWidth = 3;
+      sctx.beginPath(); sctx.roundRect ? sctx.roundRect(360, 322, 300, 68, 12) : sctx.rect(360, 322, 300, 68); sctx.stroke();
+      txt('#0369a1', 22, 800, '欠席の連絡はこちら', 510, 364, 'center');
 
-            // 網膜の黄斑部 (中心暗点)
-            maculaSpot.setAttribute('opacity', scotoma);
+      rect('#f8fafc', 36, 420, W - 72, 84, 12);
+      txt('#475569', 19, 700, 'お問い合わせ', 60, 452);
+      txt('#475569', 19, 400, '清泉高校 事務室　026-000-0000（平日 9:00〜17:00）', 60, 484);
+    },
+    // ---------- 1. 駅の案内表示 ----------
+    () => {
+      rect('#0f172a', 0, 0, W, H);
+      rect('#1e293b', 0, 0, W, 74);
+      txt('#ffffff', 30, 800, '長野駅　発車案内', 32, 50);
+      txt('#94a3b8', 20, 400, '10:42 現在', W - 32, 50, 'right');
 
-            // 視神経 (視野狭窄)
-            const opticR = 251 - (tunnel * 100);
-            const opticG = 191 - (tunnel * 80);
-            const opticB = 36;
-            opticNerve.setAttribute('fill', `rgb(${opticR}, ${opticG}, ${opticB})`);
+      const rows = [
+        ['10:48', '2', 'しなの７号　名古屋', '#22c55e'],
+        ['10:55', '3', '普通　松本',        '#38bdf8'],
+        ['11:02', '1', '快速　妙高高原',    '#facc15'],
+        ['11:15', '4', '普通　長野原草津口', '#38bdf8'],
+      ];
+      rows.forEach(([t, ban, dest, c], i) => {
+        const y = 100 + i * 78;
+        rect(i % 2 ? '#111c2e' : '#16233a', 0, y, W, 70);
+        txt('#ffffff', 34, 800, t, 32, y + 48);
+        rect(c, 150, y + 14, 44, 42, 8);
+        txt('#0f172a', 26, 800, ban, 172, y + 46, 'center');
+        txt('#e2e8f0', 30, 700, dest, 214, y + 48);
+        txt('#94a3b8', 18, 400, i === 0 ? '5分遅れ' : '定刻', W - 32, y + 46, 'right');
+      });
 
-            // 眼球内の濁り (飛蚊症)
-            const svgFloaters = svgFloatersGroup.children;
-            for (let i = 0; i < svgFloaters.length; i++) {
-                svgFloaters[i].style.display = i < floaters ? 'block' : 'none';
-            }
-        }
-
-        /**
-         * Canvasに飛蚊症を描画する関数
-         */
-        function drawCanvasFloaters(count) {
-            for (let i = 0; i < count; i++) {
-                const f = canvasFloaters[i];
-                f.x += f.vx; f.y += f.vy;
-                if (f.x < 0 || f.x > canvas.width) f.vx *= -1;
-                if (f.y < 0 || f.y > canvas.height) f.vy *= -1;
-                ctx.beginPath();
-                ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(0, 0, 0, ${f.opacity})`;
-                ctx.fill();
-            }
-        }
-
-        // すべてのスライダーにイベントリスナーを設定
-        const sliders = document.querySelectorAll('input[type="range"]');
-        sliders.forEach(slider => {
-            slider.addEventListener('input', applyFilters);
+      rect('#facc15', 0, H - 84, W, 84);
+      txt('#0f172a', 26, 800, '⚠ 3番線は工事のため、階段が使えません', 32, H - 34);
+    },
+    // ---------- 2. 公園の風景 ----------
+    () => {
+      const sky = sctx.createLinearGradient(0, 0, 0, H * .7);
+      sky.addColorStop(0, '#7dd3fc'); sky.addColorStop(1, '#e0f2fe');
+      sctx.fillStyle = sky; sctx.fillRect(0, 0, W, H);
+      // 太陽（まぶしさの体験用）
+      const sun = sctx.createRadialGradient(760, 110, 10, 760, 110, 120);
+      sun.addColorStop(0, '#fffbeb'); sun.addColorStop(.35, '#fde68a'); sun.addColorStop(1, 'rgba(253,230,138,0)');
+      sctx.fillStyle = sun; sctx.beginPath(); sctx.arc(760, 110, 120, 0, Math.PI * 2); sctx.fill();
+      sctx.fillStyle = '#fffdf0'; sctx.beginPath(); sctx.arc(760, 110, 42, 0, Math.PI * 2); sctx.fill();
+      // 雲
+      sctx.fillStyle = 'rgba(255,255,255,.85)';
+      [[160, 90, 40], [210, 78, 30], [250, 92, 34], [520, 60, 26], [560, 52, 20]].forEach(([x, y, r]) => {
+        sctx.beginPath(); sctx.arc(x, y, r, 0, Math.PI * 2); sctx.fill();
+      });
+      // 芝生
+      rect('#4ade80', 0, 340, W, H - 340);
+      rect('#22c55e', 0, 340, W, 26);
+      // 道
+      sctx.fillStyle = '#e7e5e4';
+      sctx.beginPath(); sctx.moveTo(360, 340); sctx.lineTo(600, 340); sctx.lineTo(820, H); sctx.lineTo(120, H); sctx.closePath(); sctx.fill();
+      // 木
+      const tree = (x, y, s) => {
+        rect('#92400e', x - 9 * s, y, 18 * s, 70 * s, 4);
+        sctx.fillStyle = '#15803d';
+        [[0, -30], [-26, -6], [26, -6], [0, -62]].forEach(([dx, dy]) => {
+          sctx.beginPath(); sctx.arc(x + dx * s, y + dy * s, 34 * s, 0, Math.PI * 2); sctx.fill();
         });
+      };
+      tree(120, 300, 1.15); tree(880, 312, .95); tree(300, 288, .7);
+      // ベンチ
+      rect('#a16207', 620, 392, 190, 14, 4);
+      rect('#a16207', 620, 416, 190, 14, 4);
+      rect('#78350f', 632, 406, 12, 46, 3);
+      rect('#78350f', 786, 406, 12, 46, 3);
+      // 案内板（文字が読めるかの手がかり）
+      rect('#ffffff', 60, 372, 210, 96, 10);
+      sctx.strokeStyle = '#0369a1'; sctx.lineWidth = 4;
+      sctx.beginPath(); sctx.roundRect ? sctx.roundRect(60, 372, 210, 96, 10) : sctx.rect(60, 372, 210, 96); sctx.stroke();
+      txt('#0369a1', 22, 800, '中央公園', 165, 406, 'center');
+      txt('#334155', 16, 400, '開園 6:00 - 21:00', 165, 434, 'center');
+      txt('#334155', 16, 400, '花火大会 8月24日', 165, 456, 'center');
+    },
+  ];
 
-    </script>
+  /* =========================================================
+     状態
+     ========================================================= */
+  const V = { cataract: 0, tunnel: 0, scotoma: 0, astig: 0, floaters: 0 };
+  let showRaw = false;
+  const MAX_FLOATERS = 26;
+  let floaters = [];
+
+  function makeFloaters() {
+    floaters = Array.from({ length: MAX_FLOATERS }, () => ({
+      x: Math.random() * W, y: Math.random() * H,
+      r: 3 + Math.random() * 9,
+      a: 0.12 + Math.random() * 0.26,
+      vx: (Math.random() - 0.5) * 0.25,
+      vy: (Math.random() - 0.5) * 0.25 - 0.05,
+      squash: 0.3 + Math.random() * 0.7,
+      rot: Math.random() * Math.PI,
+    }));
+  }
+  makeFloaters();
+
+  /* =========================================================
+     描画パイプライン
+       src → （乱視・白内障）→ stage → （暗点・視野狭窄・飛蚊症）→ 画面
+     ========================================================= */
+  /** source を px だけぼかして dst に描く（dst と source は別のキャンバスであること） */
+  function blurTo(dst, source, px) {
+    const d = dst.getContext('2d');
+    d.setTransform(1, 0, 0, 1, 0, 0);
+    d.globalAlpha = 1; d.globalCompositeOperation = 'source-over';
+    d.clearRect(0, 0, W, H);
+    if (px <= 0) { d.drawImage(source, 0, 0); return; }
+    if (FILTER_OK) {
+      d.filter = `blur(${px}px)`;
+      d.drawImage(source, 0, 0);
+      d.filter = 'none';
+    } else {
+      // 縮小→拡大による簡易ぼかし（Canvasフィルタが使えないブラウザ向け）
+      const k = Math.max(2, Math.round(px));
+      const sw = Math.max(1, Math.round(W / k)), sh = Math.max(1, Math.round(H / k));
+      kctx.setTransform(1, 0, 0, 1, 0, 0);
+      kctx.clearRect(0, 0, W, H);
+      kctx.drawImage(source, 0, 0, sw, sh);
+      d.imageSmoothingEnabled = true;
+      d.drawImage(scratch, 0, 0, sw, sh, 0, 0, W, H);
+    }
+  }
+
+  /** 乱視＋白内障を適用して stage を作る（重い処理なのでスライダー変更時だけ） */
+  function renderOptics() {
+    gctx.setTransform(1, 0, 0, 1, 0, 0);
+    gctx.globalAlpha = 1; gctx.globalCompositeOperation = 'source-over';
+    gctx.clearRect(0, 0, W, H);
+
+    // --- 乱視：縦方向へにじませる（少しずつずらして重ね、平均をとる） ---
+    const astig = V.astig / 100;
+    let base = src;
+    if (astig > 0) {
+      const amp = astig * 16, N = 9;
+      actx.setTransform(1, 0, 0, 1, 0, 0);
+      actx.globalCompositeOperation = 'source-over';
+      actx.clearRect(0, 0, W, H);
+      actx.globalAlpha = 1 / N;
+      for (let i = 0; i < N; i++) {
+        actx.drawImage(src, 0, (i / (N - 1) - 0.5) * 2 * amp);
+      }
+      actx.globalAlpha = 1;
+      base = bufA;
+    }
+
+    // --- 白内障：ぼかし＋明るさ＋黄色いかすみ＋グレア ---
+    const cat = V.cataract / 100;
+    if (cat > 0) {
+      if (FILTER_OK) {
+        gctx.filter = `blur(${cat * 9}px) brightness(${1 + cat * 0.35})`;
+        gctx.drawImage(base, 0, 0);
+        gctx.filter = 'none';
+      } else {
+        blurTo(stage, base, cat * 9);      // 明るさ補正は簡易版では省略
+      }
+      gctx.fillStyle = `rgba(255,247,214,${cat * 0.5})`;
+      gctx.fillRect(0, 0, W, H);
+      // 明るいところのにじみ（グレア）
+      blurTo(bufB, base, 18 + cat * 26);
+      gctx.globalAlpha = cat * 0.45;
+      gctx.globalCompositeOperation = 'lighter';
+      gctx.drawImage(bufB, 0, 0);
+      gctx.globalCompositeOperation = 'source-over';
+      gctx.globalAlpha = 1;
+    } else {
+      gctx.drawImage(base, 0, 0);
+    }
+  }
+
+  /** 画面へ出力（暗点・視野狭窄・飛蚊症）。飛蚊症のアニメーションで毎フレーム呼ばれる */
+  function paint() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    if (showRaw) { ctx.drawImage(src, 0, 0); return; }
+    ctx.drawImage(stage, 0, 0);
+
+    const cx = W / 2, cy = H / 2;
+
+    // --- 中心暗点 ---
+    const sc = V.scotoma / 100;
+    if (sc > 0) {
+      const r = 40 + sc * (H * 0.45);
+      const g = ctx.createRadialGradient(cx, cy, r * 0.25, cx, cy, r);
+      g.addColorStop(0, `rgba(30,30,34,${0.55 + sc * 0.42})`);
+      g.addColorStop(0.55, `rgba(30,30,34,${0.4 + sc * 0.4})`);
+      g.addColorStop(1, 'rgba(30,30,34,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // --- 視野狭窄 ---
+    const tn = V.tunnel / 100;
+    if (tn > 0) {
+      const outer = Math.hypot(cx, cy);
+      const open = outer * (1 - tn * 0.92);
+      const g = ctx.createRadialGradient(cx, cy, Math.max(0, open * 0.55), cx, cy, Math.max(1, open));
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(0.75, `rgba(0,0,0,${0.55 * tn})`);
+      g.addColorStop(1, 'rgba(0,0,0,1)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // --- 飛蚊症 ---
+    const fl = V.floaters / 100;
+    if (fl > 0) {
+      const n = Math.round(fl * MAX_FLOATERS);
+      for (let i = 0; i < n; i++) {
+        const f = floaters[i];
+        ctx.save();
+        ctx.translate(f.x, f.y);
+        ctx.rotate(f.rot);
+        ctx.scale(1, f.squash);
+        ctx.beginPath(); ctx.arc(0, 0, f.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(40,40,48,${f.a})`;
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
+
+  /* 飛蚊症のゆっくりした動き */
+  let raf = 0;
+  function tick() {
+    raf = 0;
+    if (V.floaters > 0 && !showRaw && !REDUCED) {
+      const n = Math.round((V.floaters / 100) * MAX_FLOATERS);
+      for (let i = 0; i < n; i++) {
+        const f = floaters[i];
+        f.x += f.vx; f.y += f.vy;
+        if (f.x < -20) f.x = W + 20; if (f.x > W + 20) f.x = -20;
+        if (f.y < -20) f.y = H + 20; if (f.y > H + 20) f.y = -20;
+      }
+      paint();
+      raf = requestAnimationFrame(tick);
+    }
+  }
+  function ensureAnim() {
+    if (V.floaters > 0 && !showRaw && !REDUCED && !raf) raf = requestAnimationFrame(tick);
+  }
+
+  function refresh(opticsChanged = true) {
+    if (opticsChanged) renderOptics();
+    paint();
+    updateEye();
+    ensureAnim();
+  }
+
+  /* =========================================================
+     場面の切り替え
+     ========================================================= */
+  function loadScene(i) {
+    sctx.setTransform(1, 0, 0, 1, 0, 0);
+    sctx.clearRect(0, 0, W, H);
+    SCENES[i]();
+    refresh();
+  }
+
+  const chips = [...document.querySelectorAll('.chip[data-scene]')];
+  chips.forEach((c) => c.addEventListener('click', () => {
+    chips.forEach((x) => x.setAttribute('aria-pressed', String(x === c)));
+    loadScene(Number(c.dataset.scene));
+  }));
+
+  $('file').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const fr = new FileReader();
+    fr.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        chips.forEach((x) => x.setAttribute('aria-pressed', 'false'));
+        sctx.setTransform(1, 0, 0, 1, 0, 0);
+        sctx.fillStyle = '#000'; sctx.fillRect(0, 0, W, H);
+        const s = Math.max(W / img.width, H / img.height);   // 画面いっぱいに
+        const w = img.width * s, h = img.height * s;
+        sctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+        refresh();
+      };
+      img.onerror = () => { live.textContent = 'この画像は読み込めませんでした'; };
+      img.src = ev.target.result;
+    };
+    fr.readAsDataURL(f);
+  });
+
+  /* =========================================================
+     スライダー
+     ========================================================= */
+  const KEYS = ['cataract', 'tunnel', 'scotoma', 'astig', 'floaters'];
+  const OPTICS = new Set(['cataract', 'astig']);   // 重い処理が必要なもの
+
+  KEYS.forEach((k) => {
+    const el = $(`s-${k}`);
+    el.addEventListener('input', () => {
+      V[k] = Number(el.value);
+      $(`o-${k}`).textContent = `${V[k]}%`;
+      refresh(OPTICS.has(k));
+    });
+  });
+
+  function setAll(vals, label) {
+    KEYS.forEach((k) => {
+      V[k] = vals[k] || 0;
+      $(`s-${k}`).value = String(V[k]);
+      $(`o-${k}`).textContent = `${V[k]}%`;
+    });
+    refresh(true);
+    if (label) live.textContent = `${label}の見え方に切り替えました`;
+  }
+
+  const PRESETS = {
+    cataract: { vals: { cataract: 60 },              label: '白内障' },
+    tunnel:   { vals: { tunnel: 62 },                label: '緑内障（視野狭窄）' },
+    scotoma:  { vals: { scotoma: 55 },               label: '加齢黄斑変性（中心暗点）' },
+    astig:    { vals: { astig: 55 },                 label: '乱視' },
+    floaters: { vals: { floaters: 60 },              label: '飛蚊症' },
+    none:     { vals: {},                            label: '通常' },
+  };
+  document.querySelectorAll('.preset').forEach((b) => {
+    b.addEventListener('click', () => {
+      const p = PRESETS[b.dataset.preset];
+      setAll(p.vals, p.label);
+    });
+  });
+  $('reset-all').addEventListener('click', () => setAll({}, '通常'));
+
+  /* =========================================================
+     元の見え方と比べる（押している間だけ）
+     ========================================================= */
+  const cmp = $('compare');
+  const setRaw = (on) => {
+    if (showRaw === on) return;
+    showRaw = on;
+    cmp.setAttribute('aria-pressed', String(on));
+    $('stage').dataset.raw = String(on);
+    $('tag').textContent = on ? '元の見え方' : 'シミュレーション中';
+    paint();
+    ensureAnim();
+  };
+  cmp.addEventListener('pointerdown', (e) => { cmp.setPointerCapture(e.pointerId); setRaw(true); });
+  cmp.addEventListener('pointerup', () => setRaw(false));
+  cmp.addEventListener('pointercancel', () => setRaw(false));
+  cmp.addEventListener('pointerleave', () => setRaw(false));
+  cmp.addEventListener('keydown', (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setRaw(true); } });
+  cmp.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setRaw(false); } });
+  cmp.addEventListener('blur', () => setRaw(false));
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && raf) { cancelAnimationFrame(raf); raf = 0; } else ensureAnim();
+  });
+
+  /* =========================================================
+     眼球の断面図を連動させる
+     ========================================================= */
+  const eyeFloaters = $('eye-floaters');
+  for (let i = 0; i < MAX_FLOATERS; i++) {
+    const ang = (i / MAX_FLOATERS) * Math.PI * 2 + i * 0.7;
+    const rad = 12 + ((i * 13) % 42);
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+    c.setAttribute('cx', (150 + rad * Math.cos(ang)).toFixed(1));
+    c.setAttribute('cy', (75 + rad * Math.sin(ang)).toFixed(1));
+    c.setAttribute('rx', (1.2 + (i % 4) * 0.7).toFixed(1));
+    c.setAttribute('ry', (0.8 + (i % 3) * 0.5).toFixed(1));
+    c.setAttribute('fill', 'rgba(30,41,59,.45)');
+    c.style.display = 'none';
+    eyeFloaters.appendChild(c);
+  }
+
+  function updateEye() {
+    const cat = V.cataract / 100, ast = V.astig / 100, sc = V.scotoma / 100, fl = V.floaters / 100;
+    // 水晶体の濁り
+    const r = Math.round(191 + cat * 55), g = Math.round(219 - cat * 40), b = Math.round(254 - cat * 130);
+    $('eye-lens').setAttribute('fill', `rgb(${r},${g},${b})`);
+    // 角膜のゆがみ
+    const d = ast * 22;
+    $('eye-cornea').setAttribute('d', `M78 8 C ${46 - d} ${34 - d} ${46 + d} ${116 + d} 78 142`);
+    // 黄斑部の暗点
+    $('eye-macula').setAttribute('r', (sc * 11).toFixed(1));
+    $('eye-macula').setAttribute('opacity', sc.toFixed(2));
+    // 硝子体の浮遊物
+    const n = Math.round(fl * MAX_FLOATERS);
+    [...eyeFloaters.children].forEach((el, i) => { el.style.display = i < n ? 'block' : 'none'; });
+  }
+
+  /* =========================================================
+     起動
+     ========================================================= */
+  loadScene(0);
+})();
+</script>
 
 </body>
 </html>
