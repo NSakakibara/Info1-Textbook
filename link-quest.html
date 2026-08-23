@@ -1,222 +1,695 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>リンク解読チャレンジ 🔑</title>
-    <!-- Tailwind CSSを読み込み -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts (Inter) を読み込み -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', 'Noto Sans JP', sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-        .screen { display: none; }
-        .screen.active { display: flex; }
-        .link-item {
-            transition: background-color 0.2s, transform 0.2s;
-            cursor: pointer;
-        }
-        .link-item:hover {
-            transform: translateX(4px);
-            background-color: #eff6ff; /* blue-50 */
-        }
-        .dark .link-item:hover {
-            background-color: #1e293b; /* slate-800 */
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>迷子のウェブ探検家 ｜ 分かりやすいリンクテキスト</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   迷子のウェブ探検家 ― リンクテキスト体験ゲーム
+   高等学校 情報Ⅰ 補助教材「情報アクセシビリティをはじめよう」
+   - 外部フレームワーク非依存（フォント以外はオフラインで動作）
+   - 「何回クリックすれば目的地に着けるか」を数えて比較する
+   ========================================================= */
+
+:root{
+  --ink:#1e293b; --ink-soft:#475569; --ink-mute:#64748b;
+  --line:#cbd5e1; --line-soft:#e2e8f0;
+  --bg:#f1f5f9; --surface:#fff; --surface-2:#f8fafc;
+
+  --brand:#0369a1; --brand-dark:#075985; --brand-tint:#f0f9ff; --brand-line:#7dd3fc;
+  --ok:#15803d; --ok-tint:#f0fdf4; --ok-line:#86efac;
+  --ng:#b91c1c; --ng-tint:#fef2f2; --ng-line:#fca5a5;
+  --gold:#78350f; --gold-tint:#fffbeb; --gold-line:#fcd34d;
+  --mark:#fde68a; --mark-line:#f59e0b;
+  --visited:#7e22ce;
+
+  --r-sm:8px; --r-md:12px; --r-lg:18px; --r-xl:24px;
+  --shadow-1:0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.08);
+  --shadow-2:0 6px 18px rgba(15,23,42,.10);
+  --tap:44px;
+
+  --font:'M PLUS Rounded 1c','Hiragino Maru Gothic ProN','BIZ UDPGothic',
+         'Yu Gothic UI','Hiragino Sans','Noto Sans JP',system-ui,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0; font-family:var(--font); color:var(--ink); background:var(--bg);
+  line-height:1.75; -webkit-tap-highlight-color:transparent;
+}
+button{ font:inherit; color:inherit; }
+:focus-visible{ outline:3px solid var(--brand); outline-offset:2px; border-radius:6px; }
+@media (prefers-reduced-motion:reduce){ *{ animation-duration:.01ms!important; transition-duration:.01ms!important; } }
+
+/* ---------- 骨格 ---------- */
+.wrap{
+  max-width:760px; margin-inline:auto;
+  padding:clamp(12px,2.5vw,28px) clamp(12px,2.5vw,20px) calc(28px + env(safe-area-inset-bottom));
+  min-height:100vh; min-height:100dvh;
+  display:flex; flex-direction:column;
+}
+.app{ margin-top:auto; }
+.app{
+  background:var(--surface); border:1px solid var(--line-soft);
+  border-radius:var(--r-xl); box-shadow:var(--shadow-2); overflow:hidden;
+}
+.screen{ display:none; }
+.screen.is-active{ display:block; }
+
+/* ---------- 見出し・共通パーツ ---------- */
+.pad{ padding:clamp(18px,3vw,32px); }
+h1,h2,h3{ margin:0; }
+.title{ font-size:clamp(1.5rem,1.2rem+1.4vw,2.1rem); font-weight:800; color:#334155; line-height:1.35; }
+.subtitle{ margin:.6em 0 0; color:var(--ink-soft); font-size:clamp(.92rem,.88rem+.2vw,1rem); }
+.note{
+  margin-top:18px; padding:14px 16px; border-radius:var(--r-md);
+  background:var(--surface-2); border:1px solid var(--line-soft);
+}
+.note h3{ font-size:.95rem; font-weight:800; color:#334155; margin-bottom:4px; }
+.note p{ margin:0; font-size:.88rem; color:var(--ink-soft); }
+
+.btn{
+  -webkit-appearance:none; appearance:none;
+  min-height:var(--tap); padding:12px 24px; border-radius:999px;
+  border:2px solid transparent; font-weight:800; cursor:pointer;
+  box-shadow:var(--shadow-1); transition:background-color .12s ease, transform .12s ease;
+  touch-action:manipulation;
+}
+.btn:active{ transform:scale(.985); }
+.btn-primary{ background:var(--brand); color:#fff; font-size:1.05rem; }
+.btn-primary:hover{ background:var(--brand-dark); }
+.btn-ghost{ background:#fff; color:var(--ink-soft); border-color:var(--line); }
+.btn-ghost:hover{ background:#f1f5f9; }
+.btn-block{ display:block; width:100%; }
+.btn-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; }
+.btn-row .btn{ flex:1 1 200px; }
+
+/* ---------- ゲーム画面ヘッダー ---------- */
+.gamehead{
+  background:var(--brand); color:#fff;
+  padding:14px clamp(16px,3vw,28px);
+}
+.gamehead .stage{
+  display:inline-block; font-size:.72rem; font-weight:800; letter-spacing:.06em;
+  background:rgba(255,255,255,.22); border-radius:999px; padding:2px 12px; margin-bottom:6px;
+}
+.gamehead .goal-label{ font-size:.78rem; opacity:.9; }
+.gamehead .goal{ font-size:clamp(1.15rem,1.05rem+.6vw,1.5rem); font-weight:800; line-height:1.35; }
+.counter{
+  display:flex; align-items:center; gap:8px; margin-top:8px;
+  font-size:.85rem; font-weight:700;
+}
+.counter b{ font-size:1.15rem; }
+
+/* ---------- リンク一覧 ---------- */
+.listhead{
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  margin-bottom:6px;
+}
+.listhead h2{ font-size:1.1rem; font-weight:800; color:#334155; }
+.hint{ margin:0 0 14px; font-size:.88rem; color:var(--ink-soft); }
+.hint[data-kind="ng"]{ color:#7f1d1d; }
+.hint[data-kind="ok"]{ color:#14532d; }
+
+.links{ list-style:none; margin:0; padding:0; border-top:1px solid var(--line-soft); }
+.links li{ border-bottom:1px solid var(--line-soft); }
+.link{
+  -webkit-appearance:none; appearance:none;
+  display:flex; align-items:center; gap:10px; width:100%;
+  min-height:56px; padding:12px 10px;
+  background:none; border:0; border-radius:var(--r-sm);
+  text-align:left; cursor:pointer; touch-action:manipulation;
+  transition:background-color .15s ease, transform .15s ease;
+}
+.link:hover{ background:var(--brand-tint); transform:translateX(3px); }
+.link-idx{
+  flex:none; width:2.1em; font-size:.78rem; font-weight:700; color:var(--ink-mute);
+  font-variant-numeric:tabular-nums;
+}
+.link-tag{
+  flex:none; font-size:.66rem; font-weight:800; letter-spacing:.04em;
+  background:var(--line-soft); color:#334155; border-radius:999px; padding:1px 8px;
+}
+.link-text{
+  flex:1; min-width:0;
+  color:var(--brand); font-weight:700; text-decoration:underline;
+  text-underline-offset:3px;
+}
+.link[data-visited="true"] .link-text{ color:var(--visited); }
+.link[data-visited="true"] .link-idx::after{ content:"✓"; margin-left:.35em; color:var(--visited); }
+.link.is-reading{ background:var(--mark); box-shadow:inset 0 0 0 2px var(--mark-line); }
+
+.speak-bar{ display:flex; gap:8px; flex-wrap:wrap; }
+.btn-mini{
+  -webkit-appearance:none; appearance:none;
+  min-height:38px; padding:0 14px; border-radius:999px;
+  border:2px solid var(--brand-line); background:var(--brand-tint); color:var(--brand-dark);
+  font-size:.82rem; font-weight:800; cursor:pointer; touch-action:manipulation;
+}
+.btn-mini:hover{ background:#e0f2fe; }
+.btn-mini[aria-pressed="true"]{ background:var(--brand); border-color:var(--brand); color:#fff; }
+
+/* ---------- 到着ページ ---------- */
+.arrival{ text-align:center; }
+.arrival-chrome{
+  display:flex; align-items:center; gap:8px;
+  padding:8px 12px; margin-bottom:18px;
+  background:var(--surface-2); border:1px solid var(--line-soft); border-radius:999px;
+  font-family:var(--mono); font-size:.74rem; color:var(--ink-mute);
+  text-align:left; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+}
+.dot{ flex:none; width:9px; height:9px; border-radius:50%; background:var(--line); }
+.arrival-icon{
+  width:74px; height:74px; margin:0 auto 14px;
+  border-radius:50%; display:grid; place-items:center; font-size:2rem;
+}
+.arrival[data-goal="true"]  .arrival-icon{ background:var(--ok-tint); border:3px solid var(--ok-line); }
+.arrival[data-goal="false"] .arrival-icon{ background:var(--ng-tint); border:3px solid var(--ng-line); }
+.arrival-kicker{ font-size:.82rem; font-weight:800; letter-spacing:.06em; color:var(--ink-mute); }
+.arrival h2{ font-size:clamp(1.3rem,1.15rem+.8vw,1.75rem); font-weight:800; margin:.2em 0 .4em; }
+.arrival[data-goal="true"] h2{ color:var(--ok); }
+.arrival[data-goal="false"] h2{ color:#334155; }
+.arrival p{ margin:0; color:var(--ink-soft); }
+.arrival .from{
+  margin-top:16px; padding:12px 14px; border-radius:var(--r-md);
+  background:var(--surface-2); border:1px solid var(--line-soft);
+  font-size:.88rem; color:var(--ink-soft); text-align:left;
+}
+.arrival .from code{
+  font-family:var(--mono); background:var(--line-soft); border-radius:4px; padding:1px 6px;
+}
+
+/* ---------- 結果 ---------- */
+.score{
+  display:grid; grid-template-columns:1fr; gap:12px; margin:20px 0 4px;
+}
+@media (min-width:560px){ .score{ grid-template-columns:1fr 1fr; } }
+.score-card{ padding:16px; border-radius:var(--r-lg); border:1px solid; text-align:center; }
+.score-card[data-kind="ng"]{ background:var(--ng-tint); border-color:var(--ng-line); }
+.score-card[data-kind="ok"]{ background:var(--ok-tint); border-color:var(--ok-line); }
+.score-card .lbl{ font-size:.8rem; font-weight:800; }
+.score-card[data-kind="ng"] .lbl{ color:#7f1d1d; }
+.score-card[data-kind="ok"] .lbl{ color:#14532d; }
+.score-card .num{ font-size:2.6rem; font-weight:800; line-height:1.1; }
+.score-card[data-kind="ng"] .num{ color:var(--ng); }
+.score-card[data-kind="ok"] .num{ color:var(--ok); }
+.score-card .unit{ font-size:.85rem; color:var(--ink-soft); }
+
+.learn{
+  margin-top:20px; padding:16px; border-radius:var(--r-md);
+  background:var(--gold-tint); border:1px solid var(--gold-line); color:var(--gold);
+}
+.learn h3{ font-size:1rem; font-weight:800; margin-bottom:6px; }
+.learn p{ margin:0; font-size:.92rem; }
+
+.examples{ margin-top:18px; border:1px solid var(--line-soft); border-radius:var(--r-md); overflow:hidden; }
+.examples table{ border-collapse:collapse; width:100%; }
+.examples caption{
+  caption-side:top; text-align:left; padding:12px 14px 8px;
+  font-weight:800; font-size:.95rem; color:#334155;
+}
+.examples th,.examples td{
+  border-top:1px solid var(--line-soft); padding:10px 14px;
+  font-size:.88rem; text-align:left; vertical-align:top;
+}
+.examples thead th{ background:var(--surface-2); font-weight:800; font-size:.8rem; }
+.examples .ng{ color:#7f1d1d; }
+.examples .ok{ color:#14532d; font-weight:700; }
+.examples tbody th{ font-weight:400; }
+
+details.more{ margin-top:16px; }
+details.more summary{
+  cursor:pointer; min-height:38px; padding:6px 0;
+  font-size:.9rem; font-weight:800; color:var(--brand-dark);
+}
+details.more p{ margin:6px 0 0; font-size:.88rem; color:var(--ink-soft); }
+details.more code{ font-family:var(--mono); background:var(--line-soft); border-radius:4px; padding:1px 6px; }
+
+.visually-hidden{
+  position:absolute!important; width:1px; height:1px; margin:-1px; padding:0;
+  overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0;
+}
+.credit{ text-align:center; margin:16px 0 auto; font-size:.75rem; color:var(--ink-mute); }
+</style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 min-h-screen p-4">
+<body>
 
-    <div id="game-container" class="w-full max-w-xl bg-white dark:bg-gray-800 rounded-2xl shadow-xl mx-auto">
+<div class="wrap">
+  <div class="app">
 
-        <!-- スタート画面 -->
-        <div id="start-screen" class="screen active flex-col p-8 text-center">
-            <h1 class="text-4xl font-bold text-gray-800 dark:text-white mb-2">リンク解読チャレンジ 🔑</h1>
-            <p class="text-gray-600 dark:text-gray-300 mb-6">君は目的の情報を探す探検家。ウェブページにあるリンクの「テキストだけ」を頼りに、目的のページを探し出そう！</p>
-            <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg text-left mb-6">
-                <h2 class="font-bold text-lg mb-2">このゲームの背景</h2>
-                <p class="text-sm">目の不自由な方などが利用する「スクリーンリーダー」というソフトには、ページ内のリンクだけを一覧表示する機能があります。このゲームでは、その体験をシミュレーションします。</p>
-            </div>
-            <button id="start-button" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-lg shadow-lg transition-transform transform hover:scale-105">
-                探検に出発する
-            </button>
-        </div>
-        
-        <!-- ゲーム画面 -->
-        <div id="game-screen" class="screen hidden flex-col">
-            <header class="bg-blue-600 p-4 text-white">
-                <p class="text-sm">探検の目的</p>
-                <h1 id="objective-text" class="text-2xl font-bold"></h1>
-            </header>
-            <main class="p-6 flex-grow">
-                <h2 class="text-xl font-bold text-gray-800 dark:text-white mb-2">リンク一覧</h2>
-                <p id="stage-description" class="text-gray-600 dark:text-gray-300 mb-4"></p>
-                <div id="links-list" class="space-y-2 border-t border-gray-200 dark:border-gray-600 pt-4">
-                    <!-- リンクがここに挿入されます -->
-                </div>
-            </main>
-        </div>
+    <!-- ================= スタート ================= -->
+    <section class="screen is-active pad" id="s-start" aria-labelledby="t-start">
+      <h1 class="title" id="t-start">迷子のウェブ探検家</h1>
+      <p class="subtitle">
+        あなたは目的の情報をさがす探検家。ページに並ぶ<strong>リンクのテキストだけ</strong>を頼りに、
+        目的のページへたどり着けるでしょうか。
+      </p>
 
-        <!-- 中間メッセージ画面 -->
-        <div id="interstitial-screen" class="screen hidden flex-col p-8 text-center justify-center">
-            <h2 class="text-2xl font-bold mb-4">うーん、難しい...</h2>
-            <p class="text-gray-600 dark:text-gray-300 mb-6">「こちら」や「詳細」だけでは、どこに何があるか分かりませんでしたね。<br>スクリーンリーダーの利用者は、このようにリンクのテキストだけを頼りにすることがあります。</p>
-            <p class="text-gray-600 dark:text-gray-300 mb-8">次は、分かりやすいリンクが設置されたページを探検してみましょう！</p>
-            <button id="next-stage-button" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg">
-                次のステージへ
-            </button>
-        </div>
-        
-        <!-- 結果画面 -->
-        <div id="result-screen" class="screen hidden flex-col p-8 text-center justify-center">
-            <h2 id="result-title" class="text-4xl font-bold mb-4"></h2>
-            <p id="result-message" class="text-lg text-gray-600 dark:text-gray-300 mb-6"></p>
-            <div id="result-learning" class="bg-yellow-100 dark:bg-yellow-900/50 border-l-4 border-yellow-500 text-yellow-800 dark:text-yellow-200 p-4 rounded-lg mb-8 text-left"></div>
-            <button id="retry-button" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg">
-                もう一度探検する
-            </button>
-        </div>
+      <div class="note">
+        <h3>このゲームの背景</h3>
+        <p>
+          目の見えない人などが使う「スクリーンリーダー」には、<strong>ページ内のリンクだけを一覧表示する機能</strong>があります。
+          周りの文章は読まず、リンクの文字だけがずらりと並びます。このゲームでは、その状態を体験します。
+        </p>
+      </div>
 
-    </div>
+      <div class="note">
+        <h3>あそび方</h3>
+        <p>
+          リンクを1つ選ぶと、そのページへ移動します。目的のページでなければ一覧に戻って、次を試します。
+          <strong>目的地に着くまで何回クリックしたか</strong>を数えます。ステージ1とステージ2で、その回数をくらべてみましょう。
+        </p>
+      </div>
+
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-block" id="btn-start">探検に出発する</button>
+      </div>
+    </section>
+
+    <!-- ================= プレイ ================= -->
+    <section class="screen" id="s-play" aria-labelledby="t-goal">
+      <header class="gamehead">
+        <span class="stage" id="stage-label"></span>
+        <p class="goal-label" style="margin:0">探検の目的</p>
+        <h2 class="goal" id="t-goal">入学願書をダウンロードする</h2>
+        <p class="counter" style="margin:0">
+          <span>クリック回数</span><b id="tries">0</b><span>回</span>
+        </p>
+      </header>
+
+      <div class="pad">
+        <div class="listhead">
+          <h2>リンク一覧</h2>
+          <div class="speak-bar">
+            <button type="button" class="btn-mini" id="btn-speak">▶ 一覧を読み上げる</button>
+          </div>
+        </div>
+        <p class="hint" id="stage-hint"></p>
+        <ul class="links" id="links"></ul>
+      </div>
+    </section>
+
+    <!-- ================= 到着ページ ================= -->
+    <section class="screen pad" id="s-arrive" aria-labelledby="t-arrive">
+      <div class="arrival" id="arrival" data-goal="false">
+        <p class="arrival-chrome"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span id="arrive-url"></span></p>
+        <div class="arrival-icon" id="arrive-icon" aria-hidden="true"></div>
+        <p class="arrival-kicker" id="arrive-kicker"></p>
+        <h2 id="t-arrive"></h2>
+        <p id="arrive-body"></p>
+        <p class="from" id="arrive-from"></p>
+      </div>
+      <div class="btn-row" id="arrive-actions"></div>
+    </section>
+
+    <!-- ================= ステージ1おわり ================= -->
+    <section class="screen pad" id="s-bridge" aria-labelledby="t-bridge">
+      <h2 class="title" id="t-bridge">ステージ1、おつかれさま</h2>
+      <p class="subtitle" id="bridge-msg"></p>
+      <div class="note">
+        <h3>気づきましたか？</h3>
+        <p>
+          「こちら」「詳細」「ここをクリック」——どれも<strong>行き先を予測する手がかりがありません</strong>。
+          だから、うまく見つけられても<strong>それは運</strong>で、実力ではありません。
+          スクリーンリーダーの利用者は、この状態でページを探すことがあります。
+        </p>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-block" id="btn-next">ステージ2へ進む</button>
+      </div>
+    </section>
+
+    <!-- ================= 結果 ================= -->
+    <section class="screen pad" id="s-result" aria-labelledby="t-result">
+      <h2 class="title" id="t-result">探検、完了！</h2>
+      <p class="subtitle" id="result-msg"></p>
+
+      <div class="score">
+        <div class="score-card" data-kind="ng">
+          <p class="lbl" style="margin:0">ステージ1　あいまいなリンク</p>
+          <p class="num" style="margin:2px 0 0" id="score-ng">0</p>
+          <p class="unit" style="margin:0">回クリックして発見</p>
+        </div>
+        <div class="score-card" data-kind="ok">
+          <p class="lbl" style="margin:0">ステージ2　具体的なリンク</p>
+          <p class="num" style="margin:2px 0 0" id="score-ok">0</p>
+          <p class="unit" style="margin:0">回クリックして発見</p>
+        </div>
+      </div>
+
+      <div class="learn">
+        <h3>学習ポイント</h3>
+        <p id="learn-text"></p>
+      </div>
+
+      <div class="examples">
+        <table>
+          <caption>リンクテキストの書き方</caption>
+          <thead>
+            <tr><th scope="col">こう書くと伝わらない</th><th scope="col">こう書けば伝わる</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row" class="ng">最新のイベント情報は、<u>こちら</u>をご覧ください。</th><td class="ok"><u>最新のイベント情報</u>をご覧ください。</td></tr>
+            <tr><th scope="row" class="ng"><u>詳細</u></th><td class="ok"><u>〇〇イベントの詳細</u></td></tr>
+            <tr><th scope="row" class="ng"><u>クリック！</u></th><td class="ok"><u>ニュース一覧へ進む</u></td></tr>
+            <tr><th scope="row" class="ng">ファイルのダウンロードは<u>ここ</u>。</th><td class="ok"><u>入学願書をダウンロードする（PDF, 2.5MB）</u></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <details class="more">
+        <summary>「続きを読む」は絶対にダメ？（WCAG 2.4.4）</summary>
+        <p>
+          ガイドライン <code>WCAG 2.4.4 リンクの目的（文脈内）</code> は、
+          リンクテキスト単体、または<strong>その周りの文脈</strong>（同じ文・同じリスト項目・同じ表のセル・直前の見出しなど）と
+          合わせて目的が分かればよい、というルールです。
+          たとえば見出し「サッカー部の試合結果」のすぐ下にある「続きを読む」は、文脈で意味が分かります。
+        </p>
+        <p>
+          ただし、スクリーンリーダーの<strong>リンク一覧機能ではその文脈が消えてしまいます</strong>。
+          できるだけ、リンクテキスト単体で分かるようにしておくのが一番親切です。
+        </p>
+      </details>
+
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary" id="btn-retry">もう一度あそぶ</button>
+        <button type="button" class="btn btn-ghost" id="btn-review">ステージ2の一覧を見返す</button>
+      </div>
+    </section>
+
+  </div>
+
+  <p class="credit">高等学校 情報Ⅰ 補助教材「つくって、つたえる、みんなのために」</p>
+</div>
+
+<p class="visually-hidden" id="live" role="status" aria-live="polite"></p>
 
 <script>
-// --- DOM要素 ---
-const screens = {
-    start: document.getElementById('start-screen'),
-    game: document.getElementById('game-screen'),
-    interstitial: document.getElementById('interstitial-screen'),
-    result: document.getElementById('result-screen'),
-};
-const startButton = document.getElementById('start-button');
-const nextStageButton = document.getElementById('next-stage-button');
-const retryButton = document.getElementById('retry-button');
+(() => {
+  'use strict';
 
-const objectiveText = document.getElementById('objective-text');
-const stageDescription = document.getElementById('stage-description');
-const linksList = document.getElementById('links-list');
+  /* =========================================================
+     1. データ
+     ========================================================= */
+  const GOAL_LABEL = '入学願書をダウンロードする';
 
-const resultTitle = document.getElementById('result-title');
-const resultMessage = document.getElementById('result-message');
-const resultLearning = document.getElementById('result-learning');
+  // 行き先ページ（毎回シャッフルして、どのリンクに割り当てるかを変える）
+  const PAGES = [
+    { id:'goal',      title:'入学願書ダウンロード', url:'/admission/form.pdf',
+      body:'入学願書のPDFファイルです。ここが目的地でした！', goal:true, icon:'🎯' },
+    { id:'greeting',  title:'校長あいさつ',        url:'/about/message.html',
+      body:'校長先生からのごあいさつが書かれたページでした。', icon:'📄' },
+    { id:'uniform',   title:'制服の紹介',          url:'/life/uniform.html',
+      body:'制服の写真がならぶページでした。目的地ではありません。', icon:'📄' },
+    { id:'club',      title:'部活動の一覧',        url:'/club/index.html',
+      body:'部活動が一覧になっているページでした。目的地ではありません。', icon:'📄' },
+    { id:'letter',    title:'学校だより 12月号',   url:'/news/letter-12.pdf',
+      body:'12月の学校だよりのPDFでした。目的地ではありません。', icon:'📄' },
+    { id:'lunch',     title:'今月の給食献立表',    url:'/life/lunch.pdf',
+      body:'給食の献立表のPDFでした。目的地ではありません。', icon:'📄' },
+  ];
 
-// --- ゲーム設定 ---
-const OBJECTIVE = '入学願書をダウンロードする';
-const stagesData = [
-    {
-        description: 'このページのリンクは、どれも曖昧な言葉で書かれているようだ...',
-        links: [
-            { text: 'こちら', isCorrect: false },
-            { text: '詳細', isCorrect: false },
-            { text: 'ここをクリック', isCorrect: true }, // 正解はランダムに決めるべきだが、ここでは固定
-            { text: '続きを読む', isCorrect: false },
-            { text: 'PDFファイル', isCorrect: false },
-        ]
-    },
-    {
-        description: 'このページのリンクは、具体的で分かりやすい言葉で書かれているぞ！',
-        links: [
-            { text: '学校紹介パンフレット (PDF)', isCorrect: false },
-            { text: '入学願書ダウンロード', isCorrect: true },
-            { text: '部活動の紹介ページ', isCorrect: false },
-            { text: '学校へのアクセスマップ', isCorrect: false },
-            { text: '年間行事カレンダー', isCorrect: false },
-        ]
+  // ステージ1：あいまいなリンクテキスト（同じ言葉が重複するのが現実）
+  const VAGUE = ['こちら', '詳細', 'ここをクリック', 'こちら', '続きを読む', '詳細'];
+
+  // ステージ2：行き先が分かるリンクテキスト
+  const CLEAR = {
+    goal:     '入学願書をダウンロードする（PDF, 2.5MB）',
+    greeting: '校長あいさつを読む',
+    uniform:  '制服の紹介ページへ',
+    club:     '部活動の一覧を見る',
+    letter:   '学校だより 12月号（PDF, 1.2MB）',
+    lunch:    '今月の給食献立表（PDF, 0.4MB）',
+  };
+
+  const STAGES = [
+    { key:'ng', label:'ステージ 1 / 2',
+      hint:'このページのリンクは、どれもあいまいな言葉で書かれているようだ……。' },
+    { key:'ok', label:'ステージ 2 / 2',
+      hint:'このページのリンクは、行き先が分かる言葉で書かれているぞ！' },
+  ];
+
+  /* =========================================================
+     2. 状態
+     ========================================================= */
+  const state = {
+    stage: 0,
+    items: [],          // [{ text, page, visited }]
+    tries: [0, 0],
+    lastIndex: -1,
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const live = $('live');
+  const say = (t) => { live.textContent = t; };
+
+  const shuffle = (arr) => {                       // Fisher–Yates（正しいシャッフル）
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
     }
-];
+    return a;
+  };
 
-// --- ゲームの状態 ---
-let currentStageIndex = 0;
+  /* =========================================================
+     3. 画面遷移
+     ========================================================= */
+  const SCREENS = ['s-start', 's-play', 's-arrive', 's-bridge', 's-result'];
+  function show(id) {
+    stopSpeech();
+    SCREENS.forEach((s) => $(s).classList.toggle('is-active', s === id));
+    const first = $(id).querySelector('h1, h2');
+    if (first) { first.setAttribute('tabindex', '-1'); first.focus({ preventScroll: true }); }
+    window.scrollTo(0, 0);
+  }
 
-// --- イベントリスナー ---
-startButton.addEventListener('click', () => startGame(0));
-nextStageButton.addEventListener('click', () => startGame(1));
-retryButton.addEventListener('click', () => switchScreen('start'));
+  /* =========================================================
+     4. ステージの生成
+     ========================================================= */
+  function buildStage(stage) {
+    state.stage = stage;
+    state.tries[stage] = 0;
+    const pages = shuffle(PAGES);
+    state.items = pages.map((page, i) => ({
+      page,
+      text: stage === 0 ? VAGUE[i] : CLEAR[page.id],
+      visited: false,
+    }));
+    if (stage === 1) state.items = shuffle(state.items);   // 文言と順序の対応を隠す
+    renderStage();
+    show('s-play');
+  }
 
-// --- ゲームロジック ---
+  function renderStage() {
+    const s = STAGES[state.stage];
+    $('stage-label').textContent = s.label;
+    $('stage-hint').textContent = s.hint;
+    $('stage-hint').dataset.kind = s.key;
+    $('tries').textContent = String(state.tries[state.stage]);
 
-function switchScreen(screenId) {
-    for (const key in screens) {
-        screens[key].classList.remove('active');
-        screens[key].classList.add('hidden');
-    }
-    screens[screenId].classList.add('active');
-    screens[screenId].classList.remove('hidden');
-}
-
-function startGame(stageIndex) {
-    currentStageIndex = stageIndex;
-    objectiveText.textContent = OBJECTIVE;
-    renderStage(currentStageIndex);
-    switchScreen('game');
-}
-
-function renderStage(stageIndex) {
-    const stage = stagesData[stageIndex];
-    stageDescription.textContent = stage.description;
-    linksList.innerHTML = '';
-    
-    // リンクをシャッフルして表示
-    const shuffledLinks = [...stage.links].sort(() => Math.random() - 0.5);
-
-    shuffledLinks.forEach(linkInfo => {
-        const linkEl = document.createElement('div');
-        linkEl.textContent = linkInfo.text;
-        linkEl.className = 'link-item p-3 border-b border-gray-200 dark:border-gray-600';
-        linkEl.setAttribute('role', 'button');
-        linkEl.tabIndex = 0;
-        linkEl.addEventListener('click', () => handleLinkClick(linkInfo.isCorrect));
-        linkEl.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                handleLinkClick(linkInfo.isCorrect);
-            }
-        });
-        linksList.appendChild(linkEl);
+    const ul = $('links');
+    ul.innerHTML = '';
+    state.items.forEach((item, i) => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'link';
+      btn.dataset.index = String(i);
+      btn.dataset.visited = String(item.visited);
+      btn.innerHTML =
+        `<span class="link-idx">${i + 1}</span>` +
+        `<span class="link-tag">リンク</span>` +
+        `<span class="link-text"></span>`;
+      btn.querySelector('.link-text').textContent = item.text;
+      btn.setAttribute('aria-label',
+        `リンク　${item.text}${item.visited ? '　訪問済み' : ''}`);
+      li.appendChild(btn);
+      ul.appendChild(li);
     });
-}
+  }
 
-function handleLinkClick(isCorrect) {
-    if (currentStageIndex === 0) { // 曖昧なリンクのステージ
-        if (isCorrect) {
-            // 本来は分かりにくいので失敗としたいが、ゲーム進行のため中間画面へ
-            switchScreen('interstitial');
-        } else {
-            showResult(false);
-        }
-    } else { // 分かりやすいリンクのステージ
-        if (isCorrect) {
-            showResult(true);
-        } else {
-             // 分かりやすいステージでは間違えてもペナルティなしで再挑戦させる
-            linksList.classList.add('animate-pulse');
-            setTimeout(()=> linksList.classList.remove('animate-pulse'), 500);
-        }
-    }
-}
+  $('links').addEventListener('click', (e) => {
+    const btn = e.target.closest('.link');
+    if (btn) openLink(Number(btn.dataset.index));
+  });
 
-function showResult(isWin) {
-    if (isWin) {
-        resultTitle.textContent = '目的達成！🎉';
-        resultTitle.className = 'text-4xl font-bold mb-4 text-green-500';
-        resultMessage.textContent = '分かりやすいリンクのおかげで、すぐに目的の情報を見つけられました！';
-        resultLearning.innerHTML = '<p class="font-bold mb-2">学習ポイント</p><p>具体的なリンクテキストは、スクリーンリーダーの利用者など、多くの人にとってウェブサイトを使いやすくします。「〇〇をダウンロード」のように、リンク先で何ができるかが分かると最高です！</p>';
+  /* =========================================================
+     5. リンクを開く → 到着ページ
+     ========================================================= */
+  function openLink(i) {
+    stopSpeech();
+    const item = state.items[i];
+    item.visited = true;
+    state.lastIndex = i;
+    state.tries[state.stage]++;
+    $('tries').textContent = String(state.tries[state.stage]);
+
+    const isGoal = Boolean(item.page.goal);
+    const box = $('arrival');
+    box.dataset.goal = String(isGoal);
+    $('arrive-url').textContent = `https://example-koko.ed.jp${item.page.url}`;
+    $('arrive-icon').textContent = isGoal ? '🎯' : '🚧';
+    $('arrive-kicker').textContent = isGoal ? '目的地に到着！' : `${state.tries[state.stage]} 回目のクリック`;
+    $('t-arrive').textContent = item.page.title;
+    $('arrive-body').textContent = item.page.body;
+    $('arrive-from').innerHTML =
+      `たどったリンク：<code>${escapeHtml(item.text)}</code>　→　行き先：<strong>${escapeHtml(item.page.title)}</strong>`;
+
+    const actions = $('arrive-actions');
+    actions.innerHTML = '';
+    if (isGoal) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn btn-primary btn-block';
+      b.textContent = state.stage === 0 ? 'ステージ1の結果を見る' : '結果を見る';
+      b.addEventListener('click', () => (state.stage === 0 ? showBridge() : showResult()));
+      actions.appendChild(b);
     } else {
-        resultTitle.textContent = '探検失敗...';
-        resultTitle.className = 'text-4xl font-bold mb-4 text-red-500';
-        resultMessage.textContent = '違うリンクをクリックしてしまい、目的の情報は見つかりませんでした。';
-        resultLearning.innerHTML = '<p class="font-bold mb-2">学習ポイント</p><p>「こちら」などの曖昧なリンクは、リンク先を推測するしかなく、非常に不便です。リンクのテキストだけで、リンク先のページの内容が分かるようにすることが大切です。</p>';
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn btn-ghost btn-block';
+      b.textContent = '← 一覧に戻って、次を試す';
+      b.addEventListener('click', () => { renderStage(); show('s-play'); });
+      actions.appendChild(b);
     }
-    switchScreen('result');
-}
+    show('s-arrive');
+    say(isGoal ? '目的地に到着しました' : `${item.page.title}のページでした。目的地ではありません`);
+  }
 
+  const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+  /* =========================================================
+     6. ステージ1のまとめ／最終結果
+     ========================================================= */
+  function showBridge() {
+    const n = state.tries[0];
+    $('bridge-msg').textContent =
+      n === 1
+        ? '1回で見つかりました。……でも、リンクの文字からは行き先が分からなかったはずです。'
+        : `目的地にたどり着くまで、${n}回クリックしました。`;
+    show('s-bridge');
+  }
+
+  function showResult() {
+    const ng = state.tries[0], ok = state.tries[1];
+    $('score-ng').textContent = String(ng);
+    $('score-ok').textContent = String(ok);
+
+    let msg, learn;
+    if (ok < ng) {
+      msg = `クリック回数は ${ng}回 → ${ok}回 に減りました。リンクテキストを変えただけで、これだけ違います。`;
+      learn = 'リンクテキストに「行き先で何ができるか」を書くだけで、目的の情報にまっすぐたどり着けます。'
+            + 'スクリーンリーダーの利用者だけでなく、ページをざっと見て探す人、キーボードや音声で操作する人にも役立ちます。';
+    } else if (ng === 1) {
+      msg = `ステージ1は1回で当たりましたが、それは<strong>運</strong>です。`
+          + `「こちら」からは行き先を予測できないので、次に同じページを開いたら、また当てずっぽうになります。`;
+      learn = '大事なのは「当たるかどうか」ではなく「予測できるかどうか」です。'
+            + 'リンクテキストだけでリンク先が分かれば、誰でも一回でたどり着けます。';
+    } else {
+      msg = `ステージ1は${ng}回、ステージ2は${ok}回でした。ステージ2はリンクの文字を読めば行き先が分かるので、`
+          + `本来は1回でたどり着けます。もう一度ためしてみましょう。`;
+      learn = 'リンクテキストに「行き先で何ができるか」を書くのがコツです。'
+            + '「こちら」「詳細」「クリック！」だけのリンクは、前後の文章を読まないと意味が分かりません。';
+    }
+    $('result-msg').innerHTML = msg;
+    $('learn-text').textContent = learn;
+    show('s-result');
+  }
+
+  /* =========================================================
+     7. リンク一覧の読み上げ（任意・音声が無い環境でも進む）
+     ========================================================= */
+  const synth = window.speechSynthesis || null;
+  let jaVoice = null, speakToken = 0, timer = 0, marked = null;
+  const speakBtn = $('btn-speak');
+
+  function pickVoice() {
+    if (!synth) return;
+    const vs = synth.getVoices() || [];
+    jaVoice = vs.find(v => v.lang === 'ja-JP') || vs.find(v => (v.lang || '').toLowerCase().startsWith('ja')) || null;
+  }
+  if (synth) { pickVoice(); synth.addEventListener?.('voiceschanged', pickVoice); }
+
+  function mark(el) {
+    marked?.classList.remove('is-reading');
+    marked = el || null;
+    marked?.classList.add('is-reading');
+    marked?.scrollIntoView({ block: 'nearest' });
+  }
+
+  function stopSpeech() {
+    speakToken++;
+    clearTimeout(timer);
+    try { synth?.cancel(); } catch (_) {}
+    mark(null);
+    speakBtn.setAttribute('aria-pressed', 'false');
+    speakBtn.textContent = '▶ 一覧を読み上げる';
+  }
+
+  function speakList() {
+    const my = ++speakToken;
+    speakBtn.setAttribute('aria-pressed', 'true');
+    speakBtn.textContent = '■ 読み上げを止める';
+
+    const btns = [...$('links').querySelectorAll('.link')];
+    const steps = [{ text: `リンク一覧　${btns.length}件`, el: null }]
+      .concat(state.items.map((item, i) => ({
+        text: `リンク　${item.text}`, el: btns[i],
+      })));
+
+    const step = (n) => {
+      if (my !== speakToken) return;
+      if (n >= steps.length) { stopSpeech(); return; }
+      const s = steps[n];
+      mark(s.el);
+      const want = 450 + s.text.length * 130;
+      if (synth) {
+        const t0 = Date.now();
+        const u = new SpeechSynthesisUtterance(s.text);
+        u.lang = 'ja-JP'; u.rate = 1;
+        if (jaVoice) u.voice = jaVoice;
+        const go = () => {
+          if (my !== speakToken) return;
+          const spent = Date.now() - t0;
+          clearTimeout(timer);
+          // 実際に発話されなかった端末では、目安の時間だけ待って進む
+          timer = setTimeout(() => step(n + 1), spent < want * 0.35 ? want - spent : 120);
+        };
+        u.onend = go; u.onerror = go;
+        try { synth.speak(u); } catch (_) {}
+        timer = setTimeout(() => { if (my === speakToken) step(n + 1); }, want + 2500);
+      } else {
+        timer = setTimeout(() => step(n + 1), want);
+      }
+    };
+    step(0);
+  }
+
+  speakBtn.addEventListener('click', () => {
+    if (speakBtn.getAttribute('aria-pressed') === 'true') stopSpeech();
+    else speakList();
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stopSpeech(); });
+  window.addEventListener('pagehide', stopSpeech);
+
+  /* =========================================================
+     8. ボタン
+     ========================================================= */
+  $('btn-start').addEventListener('click', () => buildStage(0));
+  $('btn-next').addEventListener('click', () => buildStage(1));
+  $('btn-review').addEventListener('click', () => { renderStage(); show('s-play'); });
+  $('btn-retry').addEventListener('click', () => {
+    state.tries = [0, 0];
+    show('s-start');
+  });
+})();
 </script>
+
 </body>
 </html>
-
-
-
