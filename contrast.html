@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="description" content="「自分に見えるから、みんなも見える」は本当でしょうか。">
+<meta name="author" content="清泉大学　榊原 直樹">
+<meta property="og:type" content="article">
+<meta property="og:title" content="色とコントラスト ― 見やすさの仕組み">
+<meta property="og:description" content="「自分に見えるから、みんなも見える」は本当でしょうか。">
+<meta property="og:site_name" content="つくって、つたえる、みんなのために">
+<title>色とコントラスト ― 見やすさの仕組み ｜ つくって、つたえる、みんなのために</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Old+Mincho:wght@600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">本文へスキップ</a>
+<header class="sitehead">
+  <div class="inner">
+    <a href="index.html">つくって、つたえる、みんなのために</a>
+    <span class="sub">高等学校 情報Ⅰ 補助教材 ｜ 情報アクセシビリティをはじめよう</span>
+  </div>
+</header>
+<div class="page">
+  <nav class="crumb" aria-label="現在位置">
+    <a href="index.html">目次</a> ＞ 色とコントラスト ― 見やすさの仕組み
+  </nav>
+  <main id="main">
+    <p class="kicker">第5章</p>
+    <h1>色とコントラスト ― 見やすさの仕組み</h1>
+    <p class="lead">ウェブサイトやスマホアプリ、ポスターなど、私たちが毎日目にする情報。そのデザインが「見にくいな」と感じたことはありませんか。</p>
+
+<h2>3つのポイント</h2>
+
+<ul>
+  <li><strong>「見え方」は人それぞれ違う</strong> ― 色の感じ方や、年齢による見え方の変化があります。</li>
+  <li><strong>背景と文字の色の差が大事</strong> ― この差を「コントラスト」と呼び、見やすさの鍵になります。</li>
+  <li><strong>「なんとなく」ではダメ</strong> ― みんなが見やすいように、ちゃんとルールと数字で確認します。</li>
+</ul>
+
+<h2>人によって「見え方」は違う</h2>
+
+<p>「自分が見えるから、みんなも見えるはず」と思っていませんか。実は、色の見え方には個人差（色覚特性）があったり、年齢を重ねることで見え方が変わったりします。</p>
+
+<p>日本では<strong>男性の約20人に1人、女性の約500人に1人</strong>が、特定の色を区別しにくい色覚特性を持っていると言われています（出典：日本眼科学会）。40人のクラスなら1〜2人という計算です。</p>
+
+<p>また、高齢になると、水晶体が濁る白内障などで、全体的に視界がかすんだり、まぶしく感じたりすることがあります。</p>
+
+<p>このような多様な見え方に対応するためには、「赤色だから目立つはず」「この組み合わせはおしゃれだから大丈夫」といった主観的な判断だけでは不十分です。</p>
+
+<h2>「コントラスト比」というものさし</h2>
+
+<p>そこで重要になるのが、<strong>コントラスト比</strong>という客観的な指標です。これは、背景の色と前景（文字など）の色の明るさの差を数値で表したもので、専門的な計算式で割り出されます。</p>
+
+<p>この数値が高ければ高いほど、「くっきりしていて見やすい」ということになります。</p>
+
+<div class="tablewrap">
+<table>
+  <caption>WCAG が定めるコントラスト比の基準</caption>
+  <thead>
+    <tr><th scope="col">用途</th><th scope="col">レベルAA</th><th scope="col">レベルAAA</th></tr>
+  </thead>
+  <tbody>
+    <tr><th scope="row">本文の文字<br>（およそ16px以下のふつうの文字）</th><td>4.5 : 1 以上</td><td>7 : 1 以上</td></tr>
+    <tr><th scope="row">大きい文字<br>（24px以上、または18.7px以上の太字）</th><td>3 : 1 以上</td><td>4.5 : 1 以上</td></tr>
+    <tr><th scope="row">ボタンの枠・図形<br>（アイコンやグラフの色分けなど）</th><td>3 : 1 以上</td><td>―</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>ウェブサイトなどのデザインには、この国際的なガイドライン（WCAG）があり、デザイナーやエンジニアは、この基準をクリアするように色を選んでいます。</p>
+
+<div class="box point">
+  <p class="box-title"><span class="ic" aria-hidden="true">★</span>ポイント</p>
+  <p>色やセンスだけに頼るのではなく、「コントラスト比」という<strong>共通のものさし</strong>を使うことで、一人ひとりの見え方の違いを乗り越え、より多くの人に情報をきちんと届けられるようになります。</p>
+</div>
+
+<div class="box info">
+  <p class="box-title"><span class="ic" aria-hidden="true">i</span>数値がすべてではありません</p>
+  <p>基準を満たしていても、細い書体・小さすぎる文字・背景写真の上の文字などは読みにくくなります。数値は<strong>最低限の目安</strong>として使い、最後は実際に見て確かめましょう。</p>
+</div>
+
+<aside class="tryit" aria-labelledby="tryit-contrast">
+  <h3 id="tryit-contrast">やってみよう ― 配色と見え方を確かめてみよう</h3>
+  <p>サンプルから色を吸い取ってコントラスト比を測る道具と、白内障・緑内障などの見えにくさを体験するシミュレーターです。</p>
+  <div class="links">
+      <a class="btn" href="contrast_checker.html">コントラスト比チェッカー</a>
+      <a class="btn btn-ghost" href="vis_sim.html">見え方シミュレーター</a>
+  </div>
+</aside>
+
+  </main>
+<nav class="pager" aria-label="ページ送り">
+  <a href="alt-text.html"><span class="dir">← 前のページ</span><span class="t">伝わる画像 ― 代替テキストの役割</span></a>
+  <a class="next" href="color-only.html"><span class="dir">次のページ →</span><span class="t">色だけに頼らない伝え方</span></a>
+</nav>
+</div>
+<footer class="sitefoot">
+  <div class="inner">
+    <p>つくって、つたえる、みんなのために ／ 高等学校 情報Ⅰ 補助教材 ｜ 情報アクセシビリティをはじめよう</p>
+    <p>清泉大学　榊原 直樹　Ver. 1.1（2026年8月）</p>
+    <p>このテキストは <a href="license.html">クリエイティブ・コモンズ 表示-非営利-継承 4.0 国際（CC BY-NC-SA 4.0）</a> として公開しています。</p>
+  </div>
+</footer>
+</body>
+</html>

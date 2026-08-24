@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="description" content="画像に添える言葉。書き方は、画像の「目的」で変わります。">
+<meta name="author" content="清泉大学　榊原 直樹">
+<meta property="og:type" content="article">
+<meta property="og:title" content="伝わる画像 ― 代替テキストの役割">
+<meta property="og:description" content="画像に添える言葉。書き方は、画像の「目的」で変わります。">
+<meta property="og:site_name" content="つくって、つたえる、みんなのために">
+<title>伝わる画像 ― 代替テキストの役割 ｜ つくって、つたえる、みんなのために</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Old+Mincho:wght@600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">本文へスキップ</a>
+<header class="sitehead">
+  <div class="inner">
+    <a href="index.html">つくって、つたえる、みんなのために</a>
+    <span class="sub">高等学校 情報Ⅰ 補助教材 ｜ 情報アクセシビリティをはじめよう</span>
+  </div>
+</header>
+<div class="page">
+  <nav class="crumb" aria-label="現在位置">
+    <a href="index.html">目次</a> ＞ 伝わる画像 ― 代替テキストの役割
+  </nav>
+  <main id="main">
+    <p class="kicker">第4章</p>
+    <h1>伝わる画像 ― 代替テキストの役割</h1>
+    <p class="lead">Webサイト上の画像に設定する「代替テキスト（altテキスト）」は、情報を伝えるうえで非常に重要な役割を持っています。</p>
+
+<h2>代替テキストの3つのはたらき</h2>
+
+<ol>
+  <li><strong>目の見えない・見えにくい人への情報保障</strong><br>スクリーンリーダー（音声読み上げソフト）が、画像の代わりにテキストを読み上げ、内容を伝えます。</li>
+  <li><strong>検索エンジンへの情報提供</strong><br>Googleなどの検索エンジンが画像の内容を理解する手助けとなり、検索結果に表示されやすくなります。</li>
+  <li><strong>通信環境が悪いときの備え</strong><br>画像が表示されなかった場合に、代わりにテキストが表示され、どんな画像があったのかを伝えます。</li>
+</ol>
+
+<h2>スクリーンリーダーの仕組み</h2>
+
+<p>スクリーンリーダーは、Webサイトの情報を音声で読み上げるソフトウェアです。視覚に障害のある方が、耳で情報を得てインターネットを利用するために使います。</p>
+
+<p>このソフトは、<strong>画像そのものを「見る」ことはできません</strong>。そのため、画像に設定された代替テキストを読み上げることで、その画像がどんな内容なのかを伝えます。</p>
+
+<div class="pair">
+  <div class="box ng">
+    <p class="box-title"><span class="ic" aria-hidden="true">✕</span>代替テキストがないと</p>
+    <p>（…前の文章の読み上げ…）<br><strong>「画像」</strong><br>（…次の文章の読み上げ…）</p>
+    <p>画像の内容や目的が、まったく伝わりません。</p>
+  </div>
+  <div class="box ok">
+    <p class="box-title"><span class="ic" aria-hidden="true">○</span>適切な代替テキストがあると</p>
+    <p>（…前の文章の読み上げ…）<br><strong>「画像の説明、宇宙服を着て微笑む宇宙飛行士の林さん」</strong><br>（…次の文章の読み上げ…）</p>
+    <p>内容が音声で伝わり、前後の文脈もスムーズに理解できます。</p>
+  </div>
+</div>
+
+<h2>画像の「目的」で書き方が変わる</h2>
+
+<p>画像は、その目的によっていくつかのグループに分けることができます。目的が分かれば、どんな代替テキストを書けばよいかが見えてきます。</p>
+
+<h3>グループ1：行き先や目的を伝える「機能的な画像」</h3>
+
+<p>単なるイラストではなく、クリックすると特定の動作をしたり、ページが移動したりする「機能」を持っている画像です。</p>
+
+<p><strong>書き方のポイント：</strong>見た目の説明（「会社のロゴ」「下矢印のアイコン」）ではなく、<strong>「何ができるのか」「どこへ行けるのか」</strong>を具体的に書きます。</p>
+
+<pre><code>alt="〇〇株式会社 トップページへ"
+alt="調査レポートのPDFをダウンロード"</code></pre>
+
+<h3>グループ2：情報を伝える「説明的な画像」</h3>
+
+<p>写真やイラスト、バナーなど、それ自体が重要な情報を持っている画像です。その画像が伝えている「意味」や「文脈」を的確に説明する必要があります。</p>
+
+<p><strong>書き方のポイント：</strong>画像が「何であり、何をしているのか」を簡潔に説明します。<strong>「写真」「イラスト」といった言葉は不要</strong>です。バナー内の重要な文字情報は、すべて記述します。</p>
+
+<pre><code>alt="宇宙服を着て研究室に立つ林博士"
+alt="サマーセール開催中！全品最大50%OFF。7月31日まで"
+alt="ボウルの中で、パン生地を手で力強くこねている様子"</code></pre>
+
+<h3>グループ3：データや関係性を示す「複雑な画像」</h3>
+
+<p>グラフや図解など、多くの情報が詰まっている画像です。</p>
+
+<p><strong>書き方のポイント：</strong>すべてのデータを文字に起こすのではなく、そのグラフが<strong>「伝えたい結論や傾向は何か」</strong>を要約して書きます。詳細なデータは、画像の近くの本文にも記載するのが理想的です。</p>
+
+<pre><code>alt="月間の製品売上を示す棒グラフ。7月に売上が急増し、ピークに達している"</code></pre>
+
+<h3>グループ4：装飾目的、または情報が重複している画像</h3>
+
+<p>デザイン上の理由で配置される装飾的な画像や、すぐ隣に同じ意味のテキストが表示されているアイコンなどです。</p>
+
+<p><strong>書き方のポイント：</strong>これらは情報を伝えていないため、スクリーンリーダーが読み上げる必要はありません。代替テキストを<strong>空（<code>alt=""</code>）</strong>にします。これにより、スクリーンリーダーはその画像を「意味のない装飾」と判断し、スキップしてくれます。</p>
+
+<div class="box point">
+  <p class="box-title"><span class="ic" aria-hidden="true">★</span>空にするのと、書かないのは別ものです</p>
+  <p><code>alt=""</code> と<strong>空にする</strong>のは正しい書き方ですが、<code>alt</code>属性そのものを<strong>省略してはいけません</strong>。省略すると、一部のスクリーンリーダーが画像のファイル名（たとえば <code>IMG_2049.jpg</code>）を読み上げてしまい、かえって混乱を招きます。</p>
+</div>
+
+<p>情報を詰め込みすぎず、不要な情報を読み上げさせないことも、アクセシビリティの大切な配慮です。</p>
+
+<aside class="tryit" aria-labelledby="tryit-alt-text">
+  <h3 id="tryit-alt-text">やってみよう ― 代替テキストを考えてみよう</h3>
+  <p>実際のページの形で画像を見ながら、どんな代替テキストが適切かを選ぶクイズです。4つの選択肢すべてに解説が付きます。</p>
+  <div class="links">
+      <a class="btn" href="alt-quiz.html">この画像、どう説明する？</a>
+      <a class="btn btn-ghost" href="read_header.html">スクリーンリーダーは、こう読み上げる</a>
+  </div>
+</aside>
+
+  </main>
+<nav class="pager" aria-label="ページ送り">
+  <a href="link-text.html"><span class="dir">← 前のページ</span><span class="t">分かりやすいリンクテキスト</span></a>
+  <a class="next" href="contrast.html"><span class="dir">次のページ →</span><span class="t">色とコントラスト ― 見やすさの仕組み</span></a>
+</nav>
+</div>
+<footer class="sitefoot">
+  <div class="inner">
+    <p>つくって、つたえる、みんなのために ／ 高等学校 情報Ⅰ 補助教材 ｜ 情報アクセシビリティをはじめよう</p>
+    <p>清泉大学　榊原 直樹　Ver. 1.1（2026年8月）</p>
+    <p>このテキストは <a href="license.html">クリエイティブ・コモンズ 表示-非営利-継承 4.0 国際（CC BY-NC-SA 4.0）</a> として公開しています。</p>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="description" content="見出しと段落、そして表。文章に「意味のまとまり」を作ります。">
+<meta name="author" content="清泉大学　榊原 直樹">
+<meta property="og:type" content="article">
+<meta property="og:title" content="情報を構造化しよう ― 見出し・段落・表">
+<meta property="og:description" content="見出しと段落、そして表。文章に「意味のまとまり」を作ります。">
+<meta property="og:site_name" content="つくって、つたえる、みんなのために">
+<title>情報を構造化しよう ― 見出し・段落・表 ｜ つくって、つたえる、みんなのために</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Old+Mincho:wght@600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">本文へスキップ</a>
+<header class="sitehead">
+  <div class="inner">
+    <a href="index.html">つくって、つたえる、みんなのために</a>
+    <span class="sub">高等学校 情報Ⅰ 補助教材 ｜ 情報アクセシビリティをはじめよう</span>
+  </div>
+</header>
+<div class="page">
+  <nav class="crumb" aria-label="現在位置">
+    <a href="index.html">目次</a> ＞ 情報を構造化しよう ― 見出し・段落・表
+  </nav>
+  <main id="main">
+    <p class="kicker">第2章</p>
+    <h1>情報を構造化しよう ― 見出し・段落・表</h1>
+    <p class="lead">Webサイトやレポートの文章、ただ書くだけで満足していませんか。ちょっとした工夫で、誰にとってもグッと読みやすい文章になります。そのカギが「文章の構造化」です。</p>
+
+<h2>読みやすい文章の3つのポイント</h2>
+
+<ol>
+  <li><strong>見出しで道案内</strong> ― 文章の「目次」を作り、どこに何が書いてあるか一目で分かるようにする。</li>
+  <li><strong>段落でひと呼吸</strong> ― 話のまとまりごとに段落を分け、内容を理解しやすくする。</li>
+  <li><strong>表にも見出しを</strong> ― 表を使って情報を整理するときは、表にも見出しを付ける。</li>
+</ol>
+
+<p>文章を「構造化」するとは、これらのルールを守って、文章に<strong>意味のまとまりや階層</strong>を作ることです。これによって、目の見える人はもちろん、スクリーンリーダー（画面読み上げソフト）を使う目の不自由な人や、情報を素早く探したい人など、あらゆる人が内容をスムーズに理解できるようになります。</p>
+
+<h2>なぜ「見出し」がそんなに大切なの？</h2>
+
+<p>見出しは、文章全体の「目次」のような役割を果たします。<code>&lt;h1&gt;</code>（大見出し）、<code>&lt;h2&gt;</code>（中見出し）、<code>&lt;h3&gt;</code>（小見出し）といった見出しタグを正しく使うことで、文章の骨格がはっきりします。</p>
+
+<p>特に、スクリーンリーダーを使っている人は、この見出しを頼りにページの内容を把握します。スクリーンリーダーの<strong>「見出しジャンプ機能」</strong>を使い、<code>&lt;h2&gt;</code>から次の<code>&lt;h2&gt;</code>へと移動しながら、自分に必要な情報がどこにあるかを探します。</p>
+
+<div class="box ng">
+  <p class="box-title"><span class="ic" aria-hidden="true">✕</span>やってしまいがちな失敗</p>
+  <p><strong>文字を大きくしたり太字にしたりするだけでは、コンピューターには見出しと伝わりません。</strong>見た目だけ見出しらしくしても、読み上げソフトにとってはただの文章です。見出しの役割を、タグで正しく設定することが大切です。</p>
+</div>
+
+<h2>表（テーブル）を構造化する</h2>
+
+<p>テーブルを正しく「構造化」するとは、<strong>どのマスが見出しで、どのマスがデータなのかをコンピューターに教えてあげる作業</strong>です。</p>
+
+<h3>なぜ構造化が必要？</h3>
+
+<p>構造化されていないテーブルをスクリーンリーダーで聞くと、単語が上から順番に読み上げられるだけになってしまいます。たとえば「火曜日の2限は音楽」という関係性が分からず、「火曜日」「2限」「音楽」がバラバラの情報として伝わってしまうのです。</p>
+
+<h3>構造化の重要アイテム</h3>
+
+<p>解決策は、HTMLタグを使って役割を明確にすることです。</p>
+
+<h4><code>&lt;th&gt;</code> タグ（見出しセル）</h4>
+<p>そのマスが行や列のタイトル（見出し）であることを示します。「月」「火」といった曜日や、「1限」「2限」といった時限に使います。</p>
+
+<h4><code>scope</code> 属性（見出しの担当範囲）</h4>
+<p><code>&lt;th&gt;</code>タグに付け加える最強の助っ人です。見出しが「行」と「列」のどちらを担当するのかをハッキリさせます。</p>
+<ul>
+  <li><code>scope="col"</code> ― 列（Column）の見出し。「私はこの縦の列のリーダーです」という意味。</li>
+  <li><code>scope="row"</code> ― 行（Row）の見出し。「私はこの横の行のリーダーです」という意味。</li>
+</ul>
+
+<pre><code>&lt;table&gt;
+  &lt;caption&gt;テスト結果&lt;/caption&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;&lt;th scope="col"&gt;氏名&lt;/th&gt;&lt;th scope="col"&gt;教科&lt;/th&gt;&lt;th scope="col"&gt;点数&lt;/th&gt;&lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;&lt;th scope="row"&gt;高橋&lt;/th&gt;&lt;td&gt;国語&lt;/td&gt;&lt;td&gt;78&lt;/td&gt;&lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;</code></pre>
+
+<p>単純な表では、見出しセルとその担当範囲を設定します。複雑な表は、表を分けたり、本文でも内容を説明したりする方法を検討しましょう。</p>
+
+<div class="box ok">
+  <p class="box-title"><span class="ic" aria-hidden="true">○</span>まとめ</p>
+  <p><code>&lt;th&gt;</code>と<code>scope</code>属性を使ってテーブルを正しく構造化すると、スクリーンリーダーは見出しとデータを関連付けて読み上げてくれるようになります。セルを移動するたびに「点数　列3　78」のように、その数字が何を意味するのかが分かるのです。</p>
+</div>
+
+<aside class="tryit" aria-labelledby="tryit-structure">
+  <h3 id="tryit-structure">やってみよう ― 構造化を体験してみよう</h3>
+  <p>見出しを自分で付けてみる練習と、構造化された文章・表が実際にどう読み上げられるかの聞きくらべができます。</p>
+  <div class="links">
+      <a class="btn" href="header-quiz.html">ウェブ探検家と情報の羅針盤</a>
+      <a class="btn btn-ghost" href="read_header.html">スクリーンリーダーは、こう読み上げる</a>
+  </div>
+</aside>
+
+  </main>
+<nav class="pager" aria-label="ページ送り">
+  <a href="why.html"><span class="dir">← 前のページ</span><span class="t">はじめに ― なぜ、今「アクセシビリティ」？</span></a>
+  <a class="next" href="link-text.html"><span class="dir">次のページ →</span><span class="t">分かりやすいリンクテキスト</span></a>
+</nav>
+</div>
+<footer class="sitefoot">
+  <div class="inner">
+    <p>つくって、つたえる、みんなのために ／ 高等学校 情報Ⅰ 補助教材 ｜ 情報アクセシビリティをはじめよう</p>
+    <p>清泉大学　榊原 直樹　Ver. 1.1（2026年8月）</p>
+    <p>このテキストは <a href="license.html">クリエイティブ・コモンズ 表示-非営利-継承 4.0 国際（CC BY-NC-SA 4.0）</a> として公開しています。</p>
+  </div>
+</footer>
+</body>
+</html>

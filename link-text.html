@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="description" content="「こちら」「詳細」だけのリンクが、なぜ困るのか。">
+<meta name="author" content="清泉大学　榊原 直樹">
+<meta property="og:type" content="article">
+<meta property="og:title" content="分かりやすいリンクテキスト">
+<meta property="og:description" content="「こちら」「詳細」だけのリンクが、なぜ困るのか。">
+<meta property="og:site_name" content="つくって、つたえる、みんなのために">
+<title>分かりやすいリンクテキスト ｜ つくって、つたえる、みんなのために</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Old+Mincho:wght@600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">本文へスキップ</a>
+<header class="sitehead">
+  <div class="inner">
+    <a href="index.html">つくって、つたえる、みんなのために</a>
+    <span class="sub">高等学校 情報Ⅰ 補助教材 ｜ 情報アクセシビリティをはじめよう</span>
+  </div>
+</header>
+<div class="page">
+  <nav class="crumb" aria-label="現在位置">
+    <a href="index.html">目次</a> ＞ 分かりやすいリンクテキスト
+  </nav>
+  <main id="main">
+    <p class="kicker">第3章</p>
+    <h1>分かりやすいリンクテキスト</h1>
+    <p class="lead">ウェブページには、たくさんの情報と、他のページへ移動するための「リンク」があふれています。私たちは普段、無意識にリンクをクリックしていますが、そのリンクが「詳細」や「こちら」ばかりだったら、どうでしょうか。</p>
+
+<h2>分かりやすいリンクテキストとは</h2>
+
+<ul>
+  <li><strong>ひと目でわかる</strong> ― リンクの文字（テキスト）を見ただけで、リンク先にどんな情報があるか予測できるようにします。</li>
+  <li><strong>「こちら」「詳細」だけはNG</strong> ― それだけをリンクにするのは、できるだけ避けましょう。</li>
+  <li><strong>みんなに親切</strong> ― 特に、画面を音声で読み上げるソフト（スクリーンリーダー）を使っている人や、ページ全体をざっと見て探している人にとって、非常に重要です。</li>
+</ul>
+
+<h2>目隠しをした友達に「あれ取って」</h2>
+
+<p>目の前に友達がいて、机の上の消しゴムを指差しながら「あれ取って」と言えば伝わります。でも、電話越しや、目隠しをしている友達に「あれ取って」と言っても、「『あれ』って何のこと？」となってしまいます。</p>
+
+<p>ウェブページも同じです。スクリーンリーダーを使っている人は、私たちが目で見るのとは違う方法でページを「聞いて」います。彼らにとって、<strong>「こちらをクリック」というリンクは、目隠しされた状態で「あれ取って」と言われるのと同じ</strong>。何のことだかさっぱり伝わらないのです。</p>
+
+<h2>分かりにくいリンクが困る3つの理由</h2>
+
+<h3>1. スクリーンリーダー利用者のため</h3>
+<p>最も大きな理由です。多くの利用者は、ページ全体の朗読を待たず、<strong>リンクだけを一覧表示する機能</strong>を使って、目的の情報を探します。このとき「詳細」ばかりだと、どのリンクが何なのか分からず、結局ページ全体を最初から聞かなければならず、非常に時間がかかってしまいます。</p>
+
+<h3>2. 素早く情報を見つけたい人のため</h3>
+<p>これは私たち全員に関係します。ページをじっくり読まず、スクロールしながら見出しやリンクを拾い読みして、目的の情報を探すことはありませんか。リンクテキストが具体的だと、前後の文を読まなくても「あ、これだ」とすぐに見つけられます。</p>
+
+<h3>3. キーボードや音声入力で操作する人のため</h3>
+<p>マウスが使いにくい人（手の震えがある人、ケガをしている人など）は、キーボードの<kbd>Tab</kbd>キーでリンクを順番に移動したり、「『〇〇』のリンクを開いて」と音声で指示したりします。同じ「詳細」というリンクがたくさんあると、<kbd>Tab</kbd>キーを何度も押す必要があったり、音声で区別できなかったりして不便です。</p>
+
+<h2>書き方：リンクに「目的語」を入れよう</h2>
+
+<div class="pair">
+  <div class="box ng">
+    <p class="box-title"><span class="ic" aria-hidden="true">✕</span>伝わらない書き方</p>
+    <ul>
+      <li>最新のイベント情報は、<u>こちら</u>をご覧ください。</li>
+      <li><u>詳細</u></li>
+      <li><u>クリック！</u></li>
+      <li>ファイルのダウンロードは<u>ここ</u>。</li>
+    </ul>
+  </div>
+  <div class="box ok">
+    <p class="box-title"><span class="ic" aria-hidden="true">○</span>伝わる書き方</p>
+    <ul>
+      <li><u>最新のイベント情報</u>をご覧ください。</li>
+      <li><u>〇〇イベントの詳細</u></li>
+      <li><u>ニュース一覧へ進む</u></li>
+      <li><u>入学願書をダウンロードする（PDF, 2.5MB）</u></li>
+    </ul>
+  </div>
+</div>
+
+<p>ファイルの種類やサイズまで書いておくと、さらに親切です。</p>
+
+<h2>応用：文脈で分かればOK（WCAG 2.4.4）</h2>
+
+<p>ガイドライン <code>WCAG 2.4.4 リンクの目的（文脈内）</code> は、リンクテキスト単体、または<strong>リンクテキストとその周りの文脈</strong>（同じ文、同じリスト項目、同じ表のセル、直前の見出しなど）を合わせれば目的が分かればOK、というルールです。</p>
+
+<pre><code>&lt;h2&gt;サッカー部の試合結果&lt;/h2&gt;
+&lt;p&gt;先日の大会で、ついに優勝しました！… &lt;a href="…"&gt;続きを読む&lt;/a&gt;&lt;/p&gt;</code></pre>
+
+<p>この場合、「続きを読む」というリンクテキスト単体では分かりにくいですが、直前の見出し「サッカー部の試合結果」と合わせれば、意味が分かります。</p>
+
+<div class="box point">
+  <p class="box-title"><span class="ic" aria-hidden="true">★</span>ただし</p>
+  <p>できるだけ<strong>リンクテキスト単体で分かるようにしておく</strong>のが、一番親切で分かりやすい方法です。スクリーンリーダーのリンク一覧機能では、この「文脈」が無視されてしまうことが多いからです。</p>
+</div>
+
+<aside class="tryit" aria-labelledby="tryit-link-text">
+  <h3 id="tryit-link-text">やってみよう ― リンク一覧だけで目的地をさがしてみよう</h3>
+  <p>あなたに見えるのはリンクテキストのリストだけ。「こちら」だらけのページと、具体的なページで、目的地に着くまでのクリック回数をくらべます。</p>
+  <div class="links">
+      <a class="btn" href="link-quest.html">迷子のウェブ探検家</a>
+  </div>
+</aside>
+
+  </main>
+<nav class="pager" aria-label="ページ送り">
+  <a href="structure.html"><span class="dir">← 前のページ</span><span class="t">情報を構造化しよう ― 見出し・段落・表</span></a>
+  <a class="next" href="alt-text.html"><span class="dir">次のページ →</span><span class="t">伝わる画像 ― 代替テキストの役割</span></a>
+</nav>
+</div>
+<footer class="sitefoot">
+  <div class="inner">
+    <p>つくって、つたえる、みんなのために ／ 高等学校 情報Ⅰ 補助教材 ｜ 情報アクセシビリティをはじめよう</p>
+    <p>清泉大学　榊原 直樹　Ver. 1.1（2026年8月）</p>
+    <p>このテキストは <a href="license.html">クリエイティブ・コモンズ 表示-非営利-継承 4.0 国際（CC BY-NC-SA 4.0）</a> として公開しています。</p>
+  </div>
+</footer>
+</body>
+</html>
